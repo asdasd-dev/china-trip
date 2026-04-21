@@ -301,7 +301,7 @@
                     h1s.forEach(h1 => {
                         const btn = document.createElement('button');
                         btn.textContent = h1.textContent.split('(')[0].trim();
-                        btn.addEventListener('click', () => h1.scrollIntoView({ behavior: 'smooth' }));
+                        btn.addEventListener('click', () => h1.scrollIntoView({ behavior: 'instant' }));
                         cityNav.appendChild(btn);
                     });
                     el.insertBefore(cityNav, el.firstChild);
@@ -326,7 +326,7 @@
                             a.href = anchorId ? '#' + anchorId : '#';
                             a.addEventListener('click', e => {
                                 e.preventDefault();
-                                h2.scrollIntoView({ behavior: 'smooth' });
+                                h2.scrollIntoView({ behavior: 'instant' });
                             });
                             toc.appendChild(a);
                         });
@@ -347,7 +347,7 @@
                         h2s.forEach(h => {
                             const a = document.createElement('a');
                             a.textContent = h.textContent;
-                            a.addEventListener('click', e => { e.preventDefault(); h.scrollIntoView({ behavior: 'smooth' }); });
+                            a.addEventListener('click', e => { e.preventDefault(); h.scrollIntoView({ behavior: 'instant' }); });
                             toc.appendChild(a);
                         });
                         el.insertBefore(toc, el.querySelector('h2') || el.firstChild);
@@ -366,7 +366,7 @@
                         loadPage(targetFile, { skipSave: true }).then(() => {
                             setTimeout(() => {
                                 const target = document.getElementById(targetId);
-                                if (target) target.scrollIntoView({ behavior: 'smooth' });
+                                if (target) target.scrollIntoView({ behavior: 'instant' });
                             }, 200);
                         });
                     });
