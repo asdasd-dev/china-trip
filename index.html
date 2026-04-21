@@ -241,14 +241,20 @@
             });
         }
 
-        async function loadPage(file) {
+        async function loadPage(file, opts = {}) {
+            // Save scroll position of current page before leaving
+            if (!opts.popstate && currentPage) {
+                history.replaceState({ file: currentPage, scrollY: window.scrollY }, '', '#' + currentPage.replace('.md', ''));
+            }
             currentPage = file;
             // Update nav
             nav.querySelectorAll('button').forEach(b => {
                 b.classList.toggle('active', b.dataset.file === file);
             });
-            // Update hash
-            history.replaceState(null, '', '#' + file.replace('.md', ''));
+            // Push new state (unless triggered by popstate)
+            if (!opts.popstate) {
+                history.pushState({ file, scrollY: 0 }, '', '#' + file.replace('.md', ''));
+            }
 
             const el = document.getElementById('content');
             el.innerHTML = '<div id="loading"><div class="spinner"></div><div>Loading...</div></div>';
@@ -390,10 +396,22 @@
         });
         scrollBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
+        // Back/forward navigation
+        window.addEventListener('popstate', e => {
+            const state = e.state;
+            if (state && state.file) {
+                loadPage(state.file, { popstate: true }).then(() => {
+                    setTimeout(() => window.scrollTo(0, state.scrollY || 0), 100);
+                });
+            }
+        });
+
         // Load from hash or default
         const hash = location.hash.slice(1);
         const initial = PAGES.find(p => p.file.replace('.md', '') === hash);
-        loadPage(initial ? initial.file : PAGES[0].file);
+        const initialFile = initial ? initial.file : PAGES[0].file;
+        history.replaceState({ file: initialFile, scrollY: 0 }, '', '#' + initialFile.replace('.md', ''));
+        loadPage(initialFile, { popstate: true });
     </script>
 </body>
 </html>
