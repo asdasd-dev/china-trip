@@ -127,7 +127,9 @@
         }
         #toc a:last-child { border-bottom: none; }
         #toc a:active { color: #24292e; }
+        #toc a.toc-h1 { font-weight: 700; margin-top: 8px; color: #24292e; font-size: 0.95em; }
         #toc a.toc-h3 { padding-left: 16px; color: #586069; font-size: 0.85em; }
+        a.cross-link { color: #0366d6; text-decoration: underline dotted; cursor: pointer; }
         #scroll-top {
             position: fixed;
             bottom: 20px;
@@ -257,17 +259,19 @@
                 el.innerHTML = html;
 
                 // Add IDs to headings and build TOC
-                const headings = el.querySelectorAll('h2, h3');
+                const headings = el.querySelectorAll('h1, h2, h3');
                 if (headings.length > 2) {
                     const toc = document.createElement('div');
                     toc.id = 'toc';
                     toc.innerHTML = '<div class="toc-title">Содержание</div>';
                     headings.forEach((h, i) => {
-                        const id = 'section-' + i;
+                        const slug = h.textContent.replace(/[^\w\u0400-\u04FF\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '');
+                        const id = 'section-' + slug;
                         h.id = id;
                         const a = document.createElement('a');
                         a.href = '#' + id;
                         a.textContent = h.textContent;
+                        if (h.tagName === 'H1') a.classList.add('toc-h1');
                         if (h.tagName === 'H3') a.classList.add('toc-h3');
                         a.addEventListener('click', e => {
                             e.preventDefault();
@@ -275,8 +279,23 @@
                         });
                         toc.appendChild(a);
                     });
-                    el.insertBefore(toc, el.querySelector('h2') || el.firstChild);
+                    el.insertBefore(toc, el.querySelector('h1') || el.querySelector('h2') || el.firstChild);
                 }
+
+                // Handle cross-page links (e.g. href="#places:Some-Place")
+                el.querySelectorAll('a[href^="#places:"]').forEach(a => {
+                    a.classList.add('cross-link');
+                    a.addEventListener('click', e => {
+                        e.preventDefault();
+                        const target = a.getAttribute('href').split(':')[1];
+                        loadPage('places.md').then(() => {
+                            setTimeout(() => {
+                                const heading = document.getElementById('section-' + target);
+                                if (heading) heading.scrollIntoView({ behavior: 'smooth' });
+                            }, 300);
+                        });
+                    });
+                });
 
                 el.querySelectorAll('.task-list-item').forEach(li => {
                     const span = li.querySelector('span.task-text');
