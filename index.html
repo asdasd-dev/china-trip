@@ -247,7 +247,7 @@
                 // Interactive checkboxes
                 let idx = 0;
                 html = html.replace(/<li><input\s[^>]*type="checkbox"[^>]*>\s*/gi, (match) => {
-                    const key = file + ':' + idx;
+                    const key = file.replace('.md', '') + '_' + idx;
                     const i = idx++;
                     const checked = state[key] !== undefined ? state[key] : /checked/i.test(match);
                     return '<li class="task-list-item' + (checked ? ' checked' : '') + '"><input type="checkbox" data-key="' + key + '"' + (checked ? ' checked' : '') + '> <span class="task-text">';
