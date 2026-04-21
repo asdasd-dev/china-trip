@@ -243,7 +243,7 @@
 
         async function loadPage(file, opts = {}) {
             // Save scroll position of current page before leaving
-            if (!opts.popstate && currentPage) {
+            if (!opts.popstate && !opts.skipSave && currentPage) {
                 history.replaceState({ file: currentPage, scrollY: window.scrollY }, '', '#' + currentPage.replace('.md', ''));
             }
             currentPage = file;
@@ -360,7 +360,9 @@
                         e.preventDefault();
                         const href = a.getAttribute('href');
                         const [targetFile, targetId] = href.split('#');
-                        loadPage(targetFile).then(() => {
+                        // Save current scroll BEFORE navigating
+                        history.replaceState({ file: currentPage, scrollY: window.scrollY }, '', '#' + currentPage.replace('.md', ''));
+                        loadPage(targetFile, { skipSave: true }).then(() => {
                             setTimeout(() => {
                                 const target = document.getElementById(targetId);
                                 if (target) target.scrollIntoView({ behavior: 'smooth' });
@@ -401,7 +403,7 @@
             const state = e.state;
             if (state && state.file) {
                 loadPage(state.file, { popstate: true }).then(() => {
-                    setTimeout(() => window.scrollTo(0, state.scrollY || 0), 100);
+                    setTimeout(() => window.scrollTo(0, state.scrollY || 0), 300);
                 });
             }
         });
