@@ -71,19 +71,32 @@
         #scroll-top {
             position: fixed;
             bottom: 24px;
-            right: 24px;
+            left: 24px;
             width: 44px;
             height: 44px;
             border-radius: 50%;
             border: none;
             background: #24292e;
             color: #fff;
-            font-size: 20px;
+            font-size: 0;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.2s;
+        }
+        #scroll-top::after {
+            content: '';
+            display: block;
+            width: 10px;
+            height: 10px;
+            border-top: 2.5px solid #fff;
+            border-left: 2.5px solid #fff;
+            transform: rotate(45deg) translateY(3px);
         }
         #scroll-top.visible {
             opacity: 1;
@@ -97,7 +110,7 @@
     </style>
 </head>
 <body>
-    <button id="scroll-top" title="К оглавлению">&#8593;</button>
+    <button id="scroll-top" title="К оглавлению"></button>
     <div id="content">
         <div id="loading"><div class="spinner"></div><div>Loading...</div></div>
     </div>
