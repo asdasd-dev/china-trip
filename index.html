@@ -81,54 +81,54 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         const GIST_RAW = 'https://gist.githubusercontent.com/asdasd-dev/34d30982e9be7c1caee40e5211475d5b/raw/kitayskie-delishki.md';
-        const KEY = 'china-trip-cb';
+        const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
 
-        function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
-        function saveState(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
+        async function loadState() {
+            try {
+                const res = await fetch(DB_URL + '/checkboxes.json');
+                return (await res.json()) || {};
+            } catch { return {}; }
+        }
+
+        function saveCheckbox(idx, checked) {
+            fetch(DB_URL + '/checkboxes/' + idx + '.json', {
+                method: 'PUT',
+                body: JSON.stringify(checked)
+            });
+        }
 
         async function render() {
-            const res = await fetch(GIST_RAW + '?t=' + Date.now());
-            const md = await res.text();
+            const [mdRes, state] = await Promise.all([
+                fetch(GIST_RAW + '?t=' + Date.now()).then(r => r.text()),
+                loadState()
+            ]);
+
             marked.setOptions({ breaks: true, gfm: true });
-            let html = marked.parse(md);
+            let html = marked.parse(mdRes);
 
             let idx = 0;
             html = html.replace(/<li><input\s[^>]*type="checkbox"[^>]*>\s*/gi, (match) => {
-                const checked = /checked/i.test(match);
                 const i = idx++;
+                const checked = state[i] !== undefined ? state[i] : /checked/i.test(match);
                 return '<li class="task-list-item' + (checked ? ' checked' : '') + '"><input type="checkbox" data-i="' + i + '"' + (checked ? ' checked' : '') + '> <span class="task-text">';
             });
 
             const el = document.getElementById('content');
             el.innerHTML = html;
 
-            // Close task-text spans
             el.querySelectorAll('.task-list-item').forEach(li => {
-                const cb = li.querySelector('input[type="checkbox"]');
                 const span = li.querySelector('span.task-text');
-                if (cb && span) {
-                    // Move remaining nodes into span
+                if (span) {
                     while (span.nextSibling) span.appendChild(span.nextSibling);
                 }
             });
 
-            // Restore saved state
-            const state = loadState();
-            el.querySelectorAll('.task-list-item input[type="checkbox"]').forEach(cb => {
-                const i = cb.dataset.i;
-                if (state[i] !== undefined) {
-                    cb.checked = state[i];
-                    cb.closest('.task-list-item').classList.toggle('checked', state[i]);
-                }
-            });
-
-            // Listen for changes
             el.addEventListener('change', e => {
                 if (e.target.matches('.task-list-item input[type="checkbox"]')) {
-                    const s = loadState();
-                    s[e.target.dataset.i] = e.target.checked;
-                    saveState(s);
-                    e.target.closest('.task-list-item').classList.toggle('checked', e.target.checked);
+                    const checked = e.target.checked;
+                    const i = e.target.dataset.i;
+                    saveCheckbox(i, checked);
+                    e.target.closest('.task-list-item').classList.toggle('checked', checked);
                 }
             });
         }
