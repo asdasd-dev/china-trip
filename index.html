@@ -120,14 +120,14 @@
             -webkit-tap-highlight-color: transparent;
         }
         .city-nav button:active { background: #0366d6; color: #fff; border-color: #0366d6; }
-        #toc {
+        .toc-block {
             background: #f6f8fa;
             border: 1px solid #e1e4e8;
             border-radius: 8px;
             padding: 10px 14px;
             margin-bottom: 16px;
         }
-        #toc .toc-title {
+        .toc-block .toc-title {
             font-weight: 600;
             font-size: 0.8em;
             color: #586069;
@@ -135,7 +135,7 @@
             letter-spacing: 0.5px;
             margin-bottom: 6px;
         }
-        #toc a {
+        .toc-block a {
             display: block;
             padding: 3px 0;
             color: #0366d6;
@@ -143,8 +143,8 @@
             text-decoration: none;
             border-bottom: 1px solid #eaecef;
         }
-        #toc a:last-child { border-bottom: none; }
-        #toc a:active { color: #24292e; }
+        .toc-block a:last-child { border-bottom: none; }
+        .toc-block a:active { color: #24292e; }
         a.cross-link { color: #0366d6; text-decoration: underline dotted; cursor: pointer; }
         #scroll-top {
             position: fixed;
@@ -274,69 +274,73 @@
 
                 el.innerHTML = html;
 
-                // Add IDs to all headings
-                const allHeadings = el.querySelectorAll('h1, h2, h3');
-                allHeadings.forEach((h) => {
-                    const slug = h.textContent.replace(/[^\w\u0400-\u04FF\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '');
-                    h.id = 'section-' + slug;
-                });
+                // Collect all h1 and h2 with their preceding <a id=""> anchors
+                const h1s = Array.from(el.querySelectorAll('h1'));
+                const h2s = Array.from(el.querySelectorAll('h2'));
 
-                // Build city nav buttons + per-city mini-TOCs
-                const h1s = el.querySelectorAll('h1');
+                // Helper: find the <a id="..."> right before a heading
+                function getAnchorId(heading) {
+                    let prev = heading.previousElementSibling;
+                    if (prev && prev.tagName === 'A' && prev.id) return prev.id;
+                    // Check two levels up (might be separated by <p> etc)
+                    if (prev) { prev = prev.previousElementSibling; if (prev && prev.tagName === 'A' && prev.id) return prev.id; }
+                    return null;
+                }
+
                 if (h1s.length > 1) {
+                    // City nav
                     const cityNav = document.createElement('div');
                     cityNav.className = 'city-nav';
                     h1s.forEach(h1 => {
                         const btn = document.createElement('button');
                         btn.textContent = h1.textContent.split('(')[0].trim();
-                        btn.addEventListener('click', () => {
-                            // Scroll to the anchor before the h1
-                            const prev = h1.previousElementSibling;
-                            (prev && prev.tagName === 'A' ? prev : h1).scrollIntoView({ behavior: 'smooth' });
-                        });
+                        btn.addEventListener('click', () => h1.scrollIntoView({ behavior: 'smooth' }));
                         cityNav.appendChild(btn);
                     });
                     el.insertBefore(cityNav, el.firstChild);
 
-                    // Per-city mini-TOCs: insert after each h1
-                    h1s.forEach(h1 => {
+                    // Per-city mini-TOCs
+                    h1s.forEach((h1, cityIdx) => {
+                        const nextH1 = h1s[cityIdx + 1];
+                        // Collect h2s between this h1 and next h1
+                        const cityH2s = h2s.filter(h2 => {
+                            const after = h1.compareDocumentPosition(h2) & Node.DOCUMENT_POSITION_FOLLOWING;
+                            const before = !nextH1 || (nextH1.compareDocumentPosition(h2) & Node.DOCUMENT_POSITION_PRECEDING);
+                            return after && before;
+                        });
+                        if (cityH2s.length === 0) return;
                         const toc = document.createElement('div');
-                        toc.id = 'toc';
+                        toc.className = 'toc-block';
                         toc.innerHTML = '<div class="toc-title">Содержание</div>';
-                        let sibling = h1.nextElementSibling;
-                        let hasItems = false;
-                        while (sibling && sibling.tagName !== 'H1') {
-                            if (sibling.tagName === 'H2') {
-                                const target = sibling; // capture current h2
-                                const a = document.createElement('a');
-                                a.href = '#' + target.id;
-                                a.textContent = target.textContent;
-                                a.addEventListener('click', e => {
-                                    e.preventDefault();
-                                    target.scrollIntoView({ behavior: 'smooth' });
-                                });
-                                toc.appendChild(a);
-                                hasItems = true;
-                            }
-                            sibling = sibling.nextElementSibling;
-                        }
-                        if (hasItems) h1.after(toc);
-                    });
-                } else {
-                    // Non-route pages: simple TOC from h2/h3
-                    const headings = el.querySelectorAll('h2, h3');
-                    if (headings.length > 2) {
-                        const toc = document.createElement('div');
-                        toc.id = 'toc';
-                        toc.innerHTML = '<div class="toc-title">Содержание</div>';
-                        headings.forEach(h => {
+                        cityH2s.forEach(h2 => {
+                            const anchorId = getAnchorId(h2);
                             const a = document.createElement('a');
-                            a.href = '#' + h.id;
-                            a.textContent = h.textContent;
+                            a.textContent = h2.textContent;
+                            a.href = anchorId ? '#' + anchorId : '#';
                             a.addEventListener('click', e => {
                                 e.preventDefault();
-                                h.scrollIntoView({ behavior: 'smooth' });
+                                h2.scrollIntoView({ behavior: 'smooth' });
                             });
+                            toc.appendChild(a);
+                        });
+                        // Insert TOC after h1 (and after any info block right after h1)
+                        let insertAfter = h1.nextElementSibling;
+                        while (insertAfter && insertAfter.tagName !== 'H2' && insertAfter.tagName !== 'A' && insertAfter.tagName !== 'H1') {
+                            insertAfter = insertAfter.nextElementSibling;
+                        }
+                        if (insertAfter) insertAfter.parentNode.insertBefore(toc, insertAfter);
+                        else h1.after(toc);
+                    });
+                } else {
+                    // Non-route pages: simple TOC from h2
+                    if (h2s.length > 2) {
+                        const toc = document.createElement('div');
+                        toc.className = 'toc-block';
+                        toc.innerHTML = '<div class="toc-title">Содержание</div>';
+                        h2s.forEach(h => {
+                            const a = document.createElement('a');
+                            a.textContent = h.textContent;
+                            a.addEventListener('click', e => { e.preventDefault(); h.scrollIntoView({ behavior: 'smooth' }); });
                             toc.appendChild(a);
                         });
                         el.insertBefore(toc, el.querySelector('h2') || el.firstChild);
