@@ -101,6 +101,32 @@
             margin-bottom: 12px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        #toc {
+            background: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+        }
+        #toc .toc-title {
+            font-weight: 600;
+            font-size: 0.85em;
+            color: #586069;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        #toc a {
+            display: block;
+            padding: 4px 0;
+            color: #0366d6;
+            font-size: 0.9em;
+            text-decoration: none;
+            border-bottom: 1px solid #eaecef;
+        }
+        #toc a:last-child { border-bottom: none; }
+        #toc a:active { color: #24292e; }
+        #toc a.toc-h3 { padding-left: 16px; color: #586069; font-size: 0.85em; }
         #scroll-top {
             position: fixed;
             bottom: 20px;
@@ -228,6 +254,28 @@
                 });
 
                 el.innerHTML = html;
+
+                // Add IDs to headings and build TOC
+                const headings = el.querySelectorAll('h2, h3');
+                if (headings.length > 2) {
+                    const toc = document.createElement('div');
+                    toc.id = 'toc';
+                    toc.innerHTML = '<div class="toc-title">Содержание</div>';
+                    headings.forEach((h, i) => {
+                        const id = 'section-' + i;
+                        h.id = id;
+                        const a = document.createElement('a');
+                        a.href = '#' + id;
+                        a.textContent = h.textContent;
+                        if (h.tagName === 'H3') a.classList.add('toc-h3');
+                        a.addEventListener('click', e => {
+                            e.preventDefault();
+                            h.scrollIntoView({ behavior: 'smooth' });
+                        });
+                        toc.appendChild(a);
+                    });
+                    el.insertBefore(toc, el.querySelector('h2') || el.firstChild);
+                }
 
                 el.querySelectorAll('.task-list-item').forEach(li => {
                     const span = li.querySelector('span.task-text');
