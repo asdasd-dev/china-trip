@@ -203,7 +203,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-        const GIST_BASE = 'https://gist.githubusercontent.com/asdasd-dev/34d30982e9be7c1caee40e5211475d5b/raw/';
+        const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
 
         const PAGES = [
@@ -256,7 +256,7 @@
 
             try {
                 const [mdText, state] = await Promise.all([
-                    fetch(GIST_BASE + file + '?t=' + Date.now()).then(r => r.text()),
+                    fetch(BASE + file + '?t=' + Date.now()).then(r => r.text()),
                     loadState()
                 ]);
 
@@ -281,16 +281,19 @@
                     h.id = 'section-' + slug;
                 });
 
-                // Build city nav buttons (from h1) + per-city mini-TOCs (from h2 under each h1)
+                // Build city nav buttons + per-city mini-TOCs
                 const h1s = el.querySelectorAll('h1');
                 if (h1s.length > 1) {
-                    // City nav bar at top
                     const cityNav = document.createElement('div');
                     cityNav.className = 'city-nav';
                     h1s.forEach(h1 => {
                         const btn = document.createElement('button');
                         btn.textContent = h1.textContent.split('(')[0].trim();
-                        btn.addEventListener('click', () => h1.scrollIntoView({ behavior: 'smooth' }));
+                        btn.addEventListener('click', () => {
+                            // Scroll to the anchor before the h1
+                            const prev = h1.previousElementSibling;
+                            (prev && prev.tagName === 'A' ? prev : h1).scrollIntoView({ behavior: 'smooth' });
+                        });
                         cityNav.appendChild(btn);
                     });
                     el.insertBefore(cityNav, el.firstChild);
@@ -339,19 +342,18 @@
                     }
                 }
 
-                // Handle cross-page links (href="#places:..." or "#plan:...")
-                el.querySelectorAll('a[href^="#places:"], a[href^="#plan:"]').forEach(a => {
+                // Handle cross-page links (href="places.md#id" or "plan.md#id")
+                el.querySelectorAll('a[href*=".md#"]').forEach(a => {
                     a.classList.add('cross-link');
                     a.addEventListener('click', e => {
                         e.preventDefault();
                         const href = a.getAttribute('href');
-                        const [prefix, target] = [href.split(':')[0].slice(1), href.split(':').slice(1).join(':')];
-                        const targetFile = prefix + '.md';
+                        const [targetFile, targetId] = href.split('#');
                         loadPage(targetFile).then(() => {
                             setTimeout(() => {
-                                const heading = document.getElementById('section-' + target);
-                                if (heading) heading.scrollIntoView({ behavior: 'smooth' });
-                            }, 300);
+                                const target = document.getElementById(targetId);
+                                if (target) target.scrollIntoView({ behavior: 'smooth' });
+                            }, 200);
                         });
                     });
                 });
