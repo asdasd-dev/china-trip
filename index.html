@@ -68,6 +68,28 @@
             margin-bottom: 12px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        #scroll-top {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: #24292e;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        #scroll-top.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #scroll-top:hover { background: #0366d6; }
         @media (max-width: 600px) {
             body { padding: 12px; }
             #content { padding: 20px 16px; }
@@ -75,6 +97,7 @@
     </style>
 </head>
 <body>
+    <button id="scroll-top" title="К оглавлению">&#8593;</button>
     <div id="content">
         <div id="loading"><div class="spinner"></div><div>Loading...</div></div>
     </div>
@@ -132,6 +155,15 @@
                 }
             });
         }
+
+        // Scroll to top button
+        const btn = document.getElementById('scroll-top');
+        window.addEventListener('scroll', () => {
+            btn.classList.toggle('visible', window.scrollY > 400);
+        });
+        btn.addEventListener('click', () => {
+            document.querySelector('h1')?.scrollIntoView({ behavior: 'smooth' });
+        });
 
         render().catch(err => {
             document.getElementById('content').innerHTML = '<p style="color:red">Failed to load: ' + err.message + '</p>';
