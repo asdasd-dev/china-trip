@@ -307,12 +307,13 @@
                         let hasItems = false;
                         while (sibling && sibling.tagName !== 'H1') {
                             if (sibling.tagName === 'H2') {
+                                const target = sibling; // capture current h2
                                 const a = document.createElement('a');
-                                a.href = '#' + sibling.id;
-                                a.textContent = sibling.textContent;
+                                a.href = '#' + target.id;
+                                a.textContent = target.textContent;
                                 a.addEventListener('click', e => {
                                     e.preventDefault();
-                                    sibling.scrollIntoView({ behavior: 'smooth' });
+                                    target.scrollIntoView({ behavior: 'smooth' });
                                 });
                                 toc.appendChild(a);
                                 hasItems = true;
