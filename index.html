@@ -102,33 +102,49 @@
             margin-bottom: 12px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .city-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .city-nav button {
+            padding: 6px 16px;
+            border: 1px solid #d1d5da;
+            border-radius: 20px;
+            background: #f6f8fa;
+            color: #24292e;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .city-nav button:active { background: #0366d6; color: #fff; border-color: #0366d6; }
         #toc {
             background: #f6f8fa;
             border: 1px solid #e1e4e8;
             border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
         }
         #toc .toc-title {
             font-weight: 600;
-            font-size: 0.85em;
+            font-size: 0.8em;
             color: #586069;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         #toc a {
             display: block;
-            padding: 4px 0;
+            padding: 3px 0;
             color: #0366d6;
-            font-size: 0.9em;
+            font-size: 0.85em;
             text-decoration: none;
             border-bottom: 1px solid #eaecef;
         }
         #toc a:last-child { border-bottom: none; }
         #toc a:active { color: #24292e; }
-        #toc a.toc-h1 { font-weight: 700; margin-top: 8px; color: #24292e; font-size: 0.95em; }
-        #toc a.toc-h3 { padding-left: 16px; color: #586069; font-size: 0.85em; }
         a.cross-link { color: #0366d6; text-decoration: underline dotted; cursor: pointer; }
         #scroll-top {
             position: fixed;
@@ -258,37 +274,80 @@
 
                 el.innerHTML = html;
 
-                // Add IDs to headings and build TOC
-                const headings = el.querySelectorAll('h1, h2, h3');
-                if (headings.length > 2) {
-                    const toc = document.createElement('div');
-                    toc.id = 'toc';
-                    toc.innerHTML = '<div class="toc-title">Содержание</div>';
-                    headings.forEach((h, i) => {
-                        const slug = h.textContent.replace(/[^\w\u0400-\u04FF\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '');
-                        const id = 'section-' + slug;
-                        h.id = id;
-                        const a = document.createElement('a');
-                        a.href = '#' + id;
-                        a.textContent = h.textContent;
-                        if (h.tagName === 'H1') a.classList.add('toc-h1');
-                        if (h.tagName === 'H3') a.classList.add('toc-h3');
-                        a.addEventListener('click', e => {
-                            e.preventDefault();
-                            h.scrollIntoView({ behavior: 'smooth' });
-                        });
-                        toc.appendChild(a);
+                // Add IDs to all headings
+                const allHeadings = el.querySelectorAll('h1, h2, h3');
+                allHeadings.forEach((h) => {
+                    const slug = h.textContent.replace(/[^\w\u0400-\u04FF\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '');
+                    h.id = 'section-' + slug;
+                });
+
+                // Build city nav buttons (from h1) + per-city mini-TOCs (from h2 under each h1)
+                const h1s = el.querySelectorAll('h1');
+                if (h1s.length > 1) {
+                    // City nav bar at top
+                    const cityNav = document.createElement('div');
+                    cityNav.className = 'city-nav';
+                    h1s.forEach(h1 => {
+                        const btn = document.createElement('button');
+                        btn.textContent = h1.textContent.split('(')[0].trim();
+                        btn.addEventListener('click', () => h1.scrollIntoView({ behavior: 'smooth' }));
+                        cityNav.appendChild(btn);
                     });
-                    el.insertBefore(toc, el.querySelector('h1') || el.querySelector('h2') || el.firstChild);
+                    el.insertBefore(cityNav, el.firstChild);
+
+                    // Per-city mini-TOCs: insert after each h1
+                    h1s.forEach(h1 => {
+                        const toc = document.createElement('div');
+                        toc.id = 'toc';
+                        toc.innerHTML = '<div class="toc-title">Содержание</div>';
+                        let sibling = h1.nextElementSibling;
+                        let hasItems = false;
+                        while (sibling && sibling.tagName !== 'H1') {
+                            if (sibling.tagName === 'H2') {
+                                const a = document.createElement('a');
+                                a.href = '#' + sibling.id;
+                                a.textContent = sibling.textContent;
+                                a.addEventListener('click', e => {
+                                    e.preventDefault();
+                                    sibling.scrollIntoView({ behavior: 'smooth' });
+                                });
+                                toc.appendChild(a);
+                                hasItems = true;
+                            }
+                            sibling = sibling.nextElementSibling;
+                        }
+                        if (hasItems) h1.after(toc);
+                    });
+                } else {
+                    // Non-route pages: simple TOC from h2/h3
+                    const headings = el.querySelectorAll('h2, h3');
+                    if (headings.length > 2) {
+                        const toc = document.createElement('div');
+                        toc.id = 'toc';
+                        toc.innerHTML = '<div class="toc-title">Содержание</div>';
+                        headings.forEach(h => {
+                            const a = document.createElement('a');
+                            a.href = '#' + h.id;
+                            a.textContent = h.textContent;
+                            a.addEventListener('click', e => {
+                                e.preventDefault();
+                                h.scrollIntoView({ behavior: 'smooth' });
+                            });
+                            toc.appendChild(a);
+                        });
+                        el.insertBefore(toc, el.querySelector('h2') || el.firstChild);
+                    }
                 }
 
-                // Handle cross-page links (e.g. href="#places:Some-Place")
-                el.querySelectorAll('a[href^="#places:"]').forEach(a => {
+                // Handle cross-page links (href="#places:..." or "#plan:...")
+                el.querySelectorAll('a[href^="#places:"], a[href^="#plan:"]').forEach(a => {
                     a.classList.add('cross-link');
                     a.addEventListener('click', e => {
                         e.preventDefault();
-                        const target = a.getAttribute('href').split(':')[1];
-                        loadPage('places.md').then(() => {
+                        const href = a.getAttribute('href');
+                        const [prefix, target] = [href.split(':')[0].slice(1), href.split(':').slice(1).join(':')];
+                        const targetFile = prefix + '.md';
+                        loadPage(targetFile).then(() => {
                             setTimeout(() => {
                                 const heading = document.getElementById('section-' + target);
                                 if (heading) heading.scrollIntoView({ behavior: 'smooth' });
