@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0050';
+        const APP_VERSION = '20260423-0100';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -963,7 +963,13 @@
                     const knob = thumb.nextElementSibling;
                     thumb.style.background = on ? 'var(--link)' : 'var(--toggle-bg)';
                     knob.style.transform = on ? 'translateX(18px)' : 'translateX(0)';
-                    if (on && !semanticReady && !semanticIndexing) startBackgroundIndexing();
+                    // Если включили — показываем статус/результаты в открытом поиске (если есть)
+                    // Если выключили — убираем семантику из результатов
+                    if (on) {
+                        triggerSemanticIfSearchOpen();
+                    } else {
+                        document.querySelectorAll('#search-results > div[data-semantic-pending], #search-results > div[data-semantic-section]').forEach(el => el.remove());
+                    }
                 });
 
                 el.querySelector('#update-btn').addEventListener('click', async function() {
@@ -1890,11 +1896,14 @@ onmessage = async ({ data }) => {
                 const frag = await querySemanticIndex(query);
                 if (!frag) return;
 
+                const section = document.createElement('div');
+                section.dataset.semanticSection = '1';
                 const hdr = document.createElement('div');
                 hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
                 hdr.textContent = 'По смыслу';
-                container.appendChild(hdr);
-                container.appendChild(frag);
+                section.appendChild(hdr);
+                section.appendChild(frag);
+                container.appendChild(section);
             } catch(e) {
                 console.error('Semantic search error:', e);
             }
