@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '1.5';
+        const APP_VERSION = '1.6';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -868,6 +868,9 @@
             if (file === 'settings') {
                 const v = APP_VERSION;
                 const changelog = [
+                    { date: '23.04.2026', items: [
+                        'Уведомление об обновлении: тост снова показывается при каждом возврате в приложение',
+                    ]},
                     { date: '23.04.2026', items: [
                         'Обновление: нативный SW update flow (SKIP_WAITING) — новый SW скачивается один раз в фоне, активируется мгновенно',
                         'Навигация по клику: точное попадание в нужный абзац через n-gram matching по сниппету',
@@ -2302,7 +2305,13 @@ onmessage = async ({ data }) => {
         }
 
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') checkVersion();
+            if (document.visibilityState !== 'visible') return;
+            if (updateAvailable) {
+                // Уже знаем об обновлении — напоминаем тостом при каждом возврате
+                showToast('🔔 Доступна новая версия', () => loadPage('settings'));
+            } else {
+                checkVersion();
+            }
         });
 
         const hash = location.hash.slice(1);
