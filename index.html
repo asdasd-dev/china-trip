@@ -209,12 +209,14 @@
             -webkit-tap-highlight-color: transparent;
             transition: background 0.15s, color 0.15s;
         }
-        .city-nav button:active {
+        .city-nav button:active,
+        .city-nav button.active {
             background: var(--city-btn-active-bg);
             color: #fff;
             border-color: var(--city-btn-active-bg);
         }
-        html[data-theme="dark"] .city-nav button:active { color: #000; }
+        html[data-theme="dark"] .city-nav button:active,
+        html[data-theme="dark"] .city-nav button.active { color: #000; }
         .toc-block {
             background: var(--toc-bg);
             border: 1px solid var(--border);
@@ -293,7 +295,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1747';
+        const APP_VERSION = '20260422-1750';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
