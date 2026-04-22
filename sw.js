@@ -1,4 +1,4 @@
-const VERSION = '20260422-1900';
+const VERSION = '20260422-1907';
 const CACHE = 'china-trip-' + VERSION;
 
 const PRECACHE = [
