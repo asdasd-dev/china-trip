@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '1.3';
+        const APP_VERSION = '1.4';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -738,6 +738,7 @@
         let currentPage = PAGES[0].file;
         const scroller = document.getElementById('scroller');
         let updateAvailable = false;
+        let latestVersion = null;
 
         // ── Accent + Theme ──
         function _applyAccentColors(accent) {
@@ -949,7 +950,7 @@
 
                     + '<div id="settings-info">'
                     + (updateAvailable ? '<div style="margin-top:12px;padding:12px 14px;border-radius:8px;background:#fff3cd;border:1px solid #ffc107;color:#856404;font-weight:600">🔔 Доступна новая версия</div>' : '')
-                    + '<table style="margin-top:12px;width:100%"><tr><th>Версия</th><td>' + v + '</td></tr></table>'
+                    + '<table style="margin-top:12px;width:100%"><tr><th>Версия</th><td>' + v + (updateAvailable && latestVersion ? ' → ' + latestVersion : '') + '</td></tr></table>'
                     + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">' + (updateAvailable ? '🔄 Установить обновление' : 'Обновить приложение') + '</button>'
                     + '<button id="clear-cache-btn" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-size:14px;cursor:pointer">Очистить кэш</button>'
                     + '<div style="margin-top:16px;border-radius:8px;background:var(--toc-bg);border:1px solid var(--border);overflow:hidden">'
@@ -2290,7 +2291,11 @@ onmessage = async ({ data }) => {
             fetch('./version.txt?t=' + Date.now(), { cache: 'no-store' })
                 .then(r => r.text())
                 .then(v => {
-                    if (v.trim() !== APP_VERSION) swReg.update().catch(() => {});
+                    const newVer = v.trim();
+                    if (newVer !== APP_VERSION) {
+                        latestVersion = newVer;
+                        swReg.update().catch(() => {});
+                    }
                 })
                 .catch(() => {});
         }
