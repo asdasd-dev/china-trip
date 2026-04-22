@@ -671,9 +671,36 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script>
+        // ── In-app console ──
+        const _consoleLogs = [];
+        function _patchConsole(level, orig) {
+            return function(...args) {
+                orig.apply(console, args);
+                const text = args.map(a => {
+                    try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch { return String(a); }
+                }).join(' ');
+                _consoleLogs.push({ level, text, ts: new Date().toLocaleTimeString('ru') });
+                if (_consoleLogs.length > 500) _consoleLogs.shift();
+            };
+        }
+        console.log   = _patchConsole('log',   console.log.bind(console));
+        console.warn  = _patchConsole('warn',  console.warn.bind(console));
+        console.error = _patchConsole('error', console.error.bind(console));
+
+        function renderConsoleLog() {
+            const el = document.getElementById('console-log');
+            if (!el) return;
+            if (!_consoleLogs.length) { el.textContent = 'Логов нет'; return; }
+            el.innerHTML = _consoleLogs.slice().reverse().map(e => {
+                const color = e.level === 'error' ? '#e74c3c' : e.level === 'warn' ? '#e67e22' : 'var(--text-muted)';
+                const escaped = e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                return `<div style="border-bottom:1px solid var(--border);padding:4px 0;color:${color}"><span style="opacity:.5">${e.ts}</span> ${escaped}</div>`;
+            }).join('');
+        }
+
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0145';
+        const APP_VERSION = '20260423-0200';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -904,6 +931,7 @@
                     + '<button class="active" data-tab="info">Версия</button>'
                     + '<button data-tab="appearance">Вид</button>'
                     + '<button data-tab="changelog">Ченжлог</button>'
+                    + '<button data-tab="console">Консоль</button>'
                     + '</div>'
 
                     + '<div id="settings-appearance" style="display:none">'
@@ -937,7 +965,8 @@
                     + '</div>'
                     + '</div>'
 
-                    + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>';
+                    + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>'
+                    + '<div id="settings-console" style="display:none"><div id="console-log" style="font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;padding:8px 0;min-height:200px"></div></div>';
 
                 el.querySelector('#settings-tabs').addEventListener('click', e => {
                     const btn = e.target.closest('button');
@@ -946,6 +975,8 @@
                     el.querySelector('#settings-appearance').style.display = btn.dataset.tab === 'appearance' ? '' : 'none';
                     el.querySelector('#settings-info').style.display = btn.dataset.tab === 'info' ? '' : 'none';
                     el.querySelector('#settings-changelog').style.display = btn.dataset.tab === 'changelog' ? '' : 'none';
+                    el.querySelector('#settings-console').style.display = btn.dataset.tab === 'console' ? '' : 'none';
+                    if (btn.dataset.tab === 'console') renderConsoleLog();
                 });
 
                 el.querySelectorAll('[data-theme-btn]').forEach(btn => {
