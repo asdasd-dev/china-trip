@@ -423,7 +423,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2238';
+        const APP_VERSION = '20260422-2252';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -871,7 +871,7 @@
             }
             const el = document.getElementById('content');
             const h1s = Array.from(el.querySelectorAll('h1'));
-            const allHeadings = Array.from(el.querySelectorAll('h1, h2'));
+            const allHeadings = Array.from(el.querySelectorAll('h1, h2, h3'));
             if (h1s.length === 0) { stickyHeader.classList.remove('visible'); return; }
 
             const OFFSET = 56;
@@ -884,28 +884,34 @@
             });
             if (anyVisible) { stickyHeader.classList.remove('visible'); return; }
 
-            // Находим текущий контекст — последние h1/h2 ушедшие вверх
-            let curH1 = null, curH2 = null;
+            // Находим текущий контекст — последние h1/h2/h3 ушедшие вверх
+            let curH1 = null, curH2 = null, curH3 = null;
             for (const h of allHeadings) {
                 if (h.getBoundingClientRect().top < OFFSET) {
-                    if (h.tagName === 'H1') { curH1 = h; curH2 = null; }
-                    else curH2 = h;
+                    if (h.tagName === 'H1') { curH1 = h; curH2 = null; curH3 = null; }
+                    else if (h.tagName === 'H2') { curH2 = h; curH3 = null; }
+                    else { curH3 = h; }
                 }
             }
 
             if (!curH1) { stickyHeader.classList.remove('visible'); return; }
 
             const multiCity = h1s.length > 1;
+            let left = null, right = null;
+
             if (multiCity) {
-                const cityName = curH1.textContent.split('(')[0].trim();
-                stickyHeader.innerHTML = curH2
-                    ? '<span class="sh-h1">' + cityName + '</span><span class="sh-sep">›</span><span class="sh-h2">' + curH2.textContent + '</span>'
-                    : '<span class="sh-h2">' + cityName + '</span>';
+                left = curH1.textContent.split('(')[0].trim();
+                right = curH3 ? curH3.textContent : curH2 ? curH2.textContent : null;
             } else {
-                stickyHeader.innerHTML = curH2
-                    ? '<span class="sh-h2">' + curH2.textContent + '</span>'
-                    : '<span class="sh-h2">' + curH1.textContent + '</span>';
+                left = curH2 ? curH2.textContent : null;
+                right = curH3 ? curH3.textContent : null;
             }
+
+            if (!left && !right) { stickyHeader.classList.remove('visible'); return; }
+
+            stickyHeader.innerHTML = (left && right)
+                ? '<span class="sh-h1">' + left + '</span><span class="sh-sep">›</span><span class="sh-h2">' + right + '</span>'
+                : '<span class="sh-h2">' + (left || right) + '</span>';
             stickyHeader.classList.add('visible');
         }
 
