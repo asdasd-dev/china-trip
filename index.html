@@ -349,17 +349,14 @@
         }
 
         async function loadPage(file, opts = {}) {
-            if (!opts.popstate && !opts.skipSave && currentPage) {
+            if (!opts.skipSave && currentPage) {
                 tabScrollY.set(currentPage, scroller.scrollTop);
-                history.replaceState({ file: currentPage, scrollY: scroller.scrollTop }, '', '#' + currentPage.replace('.md', ''));
             }
             currentPage = file;
             nav.querySelectorAll('button').forEach(b => {
                 b.classList.toggle('active', b.dataset.file === file);
             });
-            if (!opts.popstate) {
-                history.pushState({ file, scrollY: 0 }, '', '#' + file.replace('.md', ''));
-            }
+            location.replace('#' + file.replace('.md', ''));
 
             const el = document.getElementById('content');
             const cached = pageCache.has(file);
@@ -458,7 +455,6 @@
                         e.preventDefault();
                         const href = a.getAttribute('href');
                         const [targetFile, targetId] = href.split('#');
-                        history.replaceState({ file: currentPage, scrollY: scroller.scrollTop }, '', '#' + currentPage.replace('.md', ''));
                         loadPage(targetFile, { skipSave: true }).then(() => {
                             setTimeout(() => {
                                 const target = document.getElementById(targetId);
@@ -490,8 +486,8 @@
                     }
                 });
 
-                // Restore tab scroll (skip for cross-link and popstate — they handle scroll themselves)
-                if (!opts.popstate && !opts.skipSave) {
+                // Restore tab scroll (skip for cross-link — it scrolls to target anchor itself)
+                if (!opts.skipSave) {
                     scroller.scrollTop = tabScrollY.get(file) || 0;
                 }
             } catch (err) {
@@ -541,20 +537,9 @@
         document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
         document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 
-        window.addEventListener('popstate', e => {
-            const state = e.state;
-            if (state && state.file) {
-                loadPage(state.file, { popstate: true }).then(() => {
-                    setTimeout(() => { scroller.scrollTop = state.scrollY || 0; }, 300);
-                });
-            }
-        });
-
         const hash = location.hash.slice(1);
         const initial = PAGES.find(p => p.file.replace('.md', '') === hash);
-        const initialFile = initial ? initial.file : PAGES[0].file;
-        history.replaceState({ file: initialFile, scrollY: 0 }, '', '#' + initialFile.replace('.md', ''));
-        loadPage(initialFile, { popstate: true });
+        loadPage(initial ? initial.file : PAGES[0].file);
     </script>
 </body>
 </html>
