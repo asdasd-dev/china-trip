@@ -668,7 +668,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2156';
+        const APP_VERSION = '20260422-2158';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1099,7 +1099,7 @@
                     const qWordRes = qWords.map(w => new RegExp(escapeRe(w), 'i'));
                     // aspect-ratio: 4/3 резервирует место под картинки — layout стабильный сразу
                     requestAnimationFrame(() => {
-                        const blocks = el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote');
+                        const blocks = el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote,.phrase-ru');
                         // Сначала ищем блок где все слова есть, потом — где хоть одно
                         const target = Array.from(blocks).find(b => qWordRes.every(re => re.test(b.textContent)))
                             || Array.from(blocks).find(b => qWordRes.some(re => re.test(b.textContent)));
