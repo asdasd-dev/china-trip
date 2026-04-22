@@ -677,7 +677,8 @@
             return function(...args) {
                 orig.apply(console, args);
                 const text = args.map(a => {
-                    try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch { return String(a); }
+                    if (a instanceof Error) return a.stack || (a.message + ' (no stack)');
+                    try { return typeof a === 'object' && a !== null ? JSON.stringify(a) : String(a); } catch { return String(a); }
                 }).join(' ');
                 _consoleLogs.push({ level, text, ts: new Date().toLocaleTimeString('ru') });
                 if (_consoleLogs.length > 500) _consoleLogs.shift();
@@ -700,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0210';
+        const APP_VERSION = '20260423-0220';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1871,11 +1872,14 @@ onmessage = async ({ data }) => {
             console.log('[semantic] calling workerEmbed...');
             const qEmb = await workerEmbed(query);
             console.log('[semantic] workerEmbed done, emb.length:', qEmb?.length);
+            console.log('[semantic] scoring...');
             const allScored = semanticIndex.map(item => ({ ...item, score: cosineSim(qEmb, item.emb) }));
             allScored.sort((a, b) => b.score - a.score);
             console.log('[semantic] top scores:', allScored.slice(0, 5).map(i => i.score.toFixed(3)));
             const scored = allScored.filter(item => item.score > 0.15).slice(0, 6);
+            console.log('[semantic] scored.length:', scored.length);
             if (!scored.length) return null;
+            console.log('[semantic] building DOM frag...');
 
             const queryWords = query.trim().split(/\s+/).filter(Boolean);
             const frag = document.createDocumentFragment();
@@ -1915,6 +1919,7 @@ onmessage = async ({ data }) => {
                 });
                 frag.appendChild(group);
             }
+            console.log('[semantic] frag built, childCount:', frag.childNodes.length);
             return frag;
         }
 
