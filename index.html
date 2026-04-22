@@ -8,12 +8,14 @@
     <link rel="manifest" href="./manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Рис">
-    <meta name="theme-color" content="#C0392B">
+    <meta name="theme-color" content="#FEFBF6">
     <script>
         // Apply theme + accent before paint to avoid flash
         (function() {
             var t = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', t);
+            var tc = document.querySelector('meta[name="theme-color"]');
+            if (tc) tc.setAttribute('content', t === 'dark' ? '#0D1117' : '#FEFBF6');
             var accents = {
                 red:    { light: '#C0392B', dark: '#FF6B6B' },
                 orange: { light: '#D35400', dark: '#FF9F43' },
@@ -366,7 +368,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1952';
+        const APP_VERSION = '20260422-2001';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -454,6 +456,7 @@
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('theme', theme);
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#0D1117' : '#FEFBF6');
             const savedAccent = localStorage.getItem('accent') || 'red';
             const accent = ACCENTS.find(a => a.id === savedAccent) || ACCENTS[0];
             _applyAccentColors(accent);
