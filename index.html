@@ -206,11 +206,14 @@
             border: 1.5px solid transparent;
         }
         #content.translate-mode {
+            position: fixed;
+            inset: 0 0 calc(var(--nav-h) + env(safe-area-inset-bottom, 0px)) 0;
             padding: 0;
             border-radius: 0;
             box-shadow: none;
             background: none;
-            height: calc(100vh - var(--nav-h) - env(safe-area-inset-bottom, 0px) - 56px);
+            height: auto;
+            z-index: 10;
         }
         #content {
             background: var(--content-bg);
@@ -785,7 +788,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '3.4';
+        const APP_VERSION = '3.5';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
