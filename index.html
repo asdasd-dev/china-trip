@@ -142,14 +142,12 @@
             justify-content: center;
             width: 28px;
             height: 28px;
-            color: rgba(0,0,0,0.28);
-            transition: color 0.15s;
-        }
-        html[data-theme="dark"] nav button .tab-icon {
-            color: rgba(255,255,255,0.28);
+            color: var(--text);
+            opacity: 0.28;
+            transition: opacity 0.15s;
         }
         nav button.active .tab-icon {
-            color: var(--text);
+            opacity: 1;
         }
         nav button .tab-icon svg {
             width: 24px;
@@ -365,7 +363,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1911';
+        const APP_VERSION = '20260422-1914';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
