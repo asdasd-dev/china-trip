@@ -1,4 +1,4 @@
-const VERSION = '20260423-1500';
+const VERSION = '20260423-1510';
 const CACHE = 'china-trip-' + VERSION;
 
 // Только локальные файлы — CDN кэшируется через fetch handler при первом обращении
