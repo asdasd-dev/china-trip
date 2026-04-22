@@ -1,4 +1,4 @@
-const VERSION = '20260423-0030';
+const VERSION = '20260423-0050';
 const CACHE = 'china-trip-' + VERSION;
 const MODEL_CACHE = 'china-trip-models'; // персистентный, не удаляется при обновлениях
 

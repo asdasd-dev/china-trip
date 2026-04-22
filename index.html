@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0030';
+        const APP_VERSION = '20260423-0050';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -922,13 +922,18 @@
                     + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>'
                     + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">' + (updateAvailable ? '🔄 Установить обновление' : 'Обновить приложение') + '</button>'
                     + '<button id="clear-cache-btn" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-size:14px;cursor:pointer">Очистить кэш</button>'
-                    + '<div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:8px;background:var(--toc-bg);border:1px solid var(--border)">'
+                    + '<div style="margin-top:16px;border-radius:8px;background:var(--toc-bg);border:1px solid var(--border);overflow:hidden">'
+                    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">'
                     + '<div><div style="font-weight:600;font-size:15px">Умный поиск</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">ML-модель, поиск по смыслу</div></div>'
                     + '<label style="position:relative;display:inline-block;width:44px;height:26px;flex-shrink:0">'
                     + '<input type="checkbox" id="smart-search-toggle" style="opacity:0;width:0;height:0" ' + (localStorage.getItem('smartSearch') !== 'off' ? 'checked' : '') + '>'
                     + '<span id="smart-search-thumb" style="position:absolute;inset:0;border-radius:13px;background:' + (localStorage.getItem('smartSearch') !== 'off' ? 'var(--link)' : 'var(--toggle-bg)') + ';transition:.2s;cursor:pointer"></span>'
                     + '<span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;transform:' + (localStorage.getItem('smartSearch') !== 'off' ? 'translateX(18px)' : 'translateX(0)') + ';pointer-events:none"></span>'
                     + '</label>'
+                    + '</div>'
+                    + '<div style="border-top:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
+                    + '<div id="semantic-status-text" style="font-size:13px;color:var(--text-muted)">' + getSemanticStatusText() + '</div>'
+                    + '<button id="semantic-index-btn" style="padding:6px 14px;border-radius:6px;border:1.5px solid var(--link);background:transparent;color:var(--link);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0" ' + (semanticIndexing ? 'disabled' : '') + '>' + getSemanticBtnText() + '</button>'
                     + '</div>'
                     + '</div>'
 
@@ -965,6 +970,26 @@
                     this.textContent = 'Обновляю...';
                     this.disabled = true;
                     await hardReload();
+                });
+
+                el.querySelector('#semantic-index-btn').addEventListener('click', async function() {
+                    if (semanticIndexing) return;
+                    semanticReady = false;
+                    semanticIndex = [];
+                    // Сбрасываем IDB чтобы переиндексировать с нуля
+                    try {
+                        const db = await idbOpen();
+                        const tx = db.transaction(IDB_STORE, 'readwrite');
+                        tx.objectStore(IDB_STORE).clear();
+                        await new Promise(r => { tx.oncomplete = r; });
+                    } catch(e) { console.warn('IDB clear failed:', e); }
+                    refreshSemanticStatus();
+                    startBackgroundIndexing();
+                    // Обновляем статус во время индексации
+                    const poll = setInterval(() => {
+                        refreshSemanticStatus();
+                        if (!semanticIndexing) clearInterval(poll);
+                    }, 500);
                 });
 
                 el.querySelector('#clear-cache-btn').addEventListener('click', async function() {
@@ -1702,6 +1727,25 @@ onmessage = async ({ data }) => {
             });
         }
 
+        function getSemanticStatusText() {
+            if (semanticReady) return '✅ Готов · ' + semanticIndex.length + ' фрагментов';
+            if (semanticIndexing) return '⏳ Индексируется…';
+            return '○ Не проиндексировано';
+        }
+
+        function getSemanticBtnText() {
+            if (semanticReady) return 'Переиндексировать';
+            if (semanticIndexing) return 'Идёт индексация…';
+            return 'Запустить индексацию';
+        }
+
+        function refreshSemanticStatus() {
+            const statusEl = document.getElementById('semantic-status-text');
+            const btnEl = document.getElementById('semantic-index-btn');
+            if (statusEl) statusEl.textContent = getSemanticStatusText();
+            if (btnEl) { btnEl.textContent = getSemanticBtnText(); btnEl.disabled = semanticIndexing; }
+        }
+
         // Если поиск открыт и есть запрос — дозаписываем семантику в результаты
         function triggerSemanticIfSearchOpen() {
             const q = searchInput.value.trim();
@@ -1725,6 +1769,7 @@ onmessage = async ({ data }) => {
                     })).filter(item => item.page);
                     semanticReady = true;
                     semanticIndexing = false;
+                    refreshSemanticStatus();
                     // Воркер нужен для эмбеддинга запроса — ждём готовности перед тригером
                     createWorker()
                         .then(() => triggerSemanticIfSearchOpen())
@@ -1754,11 +1799,13 @@ onmessage = async ({ data }) => {
                 await idbSave(semanticIndex.map(item => ({ ...item, page: undefined, pageFile: item.page.file })));
                 semanticReady = true;
                 semanticIndexing = false;
+                refreshSemanticStatus();
                 showToast('✅ Умный поиск готов', null, 2500);
                 triggerSemanticIfSearchOpen();
             } catch(e) {
                 console.error('Background indexing failed:', e);
                 semanticIndexing = false;
+                refreshSemanticStatus();
             }
         }
 
@@ -2053,8 +2100,7 @@ onmessage = async ({ data }) => {
         const initial = PAGES.find(p => p.file.replace('.md', '') === hash);
         loadPage(initial ? initial.file : PAGES[0].file);
 
-        // Фоновая индексация: запускаем через 4с после старта чтобы не конкурировать с рендером
-        setTimeout(() => startBackgroundIndexing(), 4000);
+        // Индексация запускается вручную из настроек
     </script>
 </body>
 </html>
