@@ -443,7 +443,7 @@
         #chinese-overlay {
             position: fixed;
             inset: 0;
-            background: #fff;
+            background: #111;
             z-index: 2000;
             display: flex;
             flex-direction: column;
@@ -461,20 +461,20 @@
         }
         #chinese-overlay .co-zh {
             font-size: clamp(72px, 20vw, 120px);
-            color: #111;
+            color: #fff;
             text-align: center;
             line-height: 1.1;
             letter-spacing: 0.05em;
         }
         #chinese-overlay .co-pinyin {
             font-size: clamp(22px, 5vw, 32px);
-            color: #555;
+            color: #aaa;
             font-style: italic;
             text-align: center;
         }
         #chinese-overlay .co-ru {
             font-size: clamp(14px, 3.5vw, 20px);
-            color: #999;
+            color: #666;
             text-align: center;
         }
         #chinese-overlay .co-close {
@@ -484,9 +484,9 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            border: 1px solid #ddd;
+            border: 1px solid #444;
             background: transparent;
-            color: #999;
+            color: #888;
             font-size: 20px;
             cursor: pointer;
             display: flex;
@@ -777,7 +777,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '2.6';
+        const APP_VERSION = '2.7';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
