@@ -293,6 +293,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
+        const APP_VERSION = '20260422-1725';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -302,6 +303,7 @@
             { file: 'budget.md', label: 'Бюджет', icon: '💰' },
             { file: 'info.md', label: 'Инфо', icon: 'ℹ️' },
             { file: 'places.md', label: 'Места', icon: '📍' },
+            { file: 'settings', label: 'О приложении', icon: '⚙️' },
         ];
 
         let currentPage = PAGES[0].file;
@@ -363,6 +365,18 @@
             location.replace('#' + file.replace('.md', ''));
 
             const el = document.getElementById('content');
+
+            if (file === 'settings') {
+                const v = APP_VERSION;
+                const y = v.slice(0,4), mo = v.slice(4,6), d = v.slice(6,8), h = v.slice(9,11), mi = v.slice(11,13);
+                el.innerHTML = '<h1>О приложении</h1>'
+                    + '<p style="color:var(--text-muted);margin-top:-8px">Рис 🍚</p>'
+                    + '<table><tr><th>Версия</th><td>' + v + '</td></tr>'
+                    + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>';
+                scroller.scrollTop = tabScrollY.get(file) || 0;
+                return;
+            }
+
             const cached = pageCache.has(file);
             if (!cached) {
                 el.innerHTML = '<div id="loading"><div class="spinner"></div><div>Loading...</div></div>';
