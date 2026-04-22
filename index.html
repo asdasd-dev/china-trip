@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0230';
+        const APP_VERSION = '20260423-0240';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1788,7 +1788,6 @@ onmessage = async ({ data }) => {
         // Если поиск открыт и есть запрос — дозаписываем семантику в результаты
         function triggerSemanticIfSearchOpen() {
             const q = searchInput.value.trim();
-            console.log('[semantic] triggerSemanticIfSearchOpen, q:', q, 'searchResults children:', searchResults.children.length);
             if (!q || q.length < 3) return;
             // Убираем текст "индексируется" если он есть
             document.querySelectorAll('#search-results > div[data-semantic-pending]').forEach(el => el.remove());
@@ -1870,23 +1869,14 @@ onmessage = async ({ data }) => {
         }
 
         async function querySemanticIndex(query) {
-            console.log('[semantic] querySemanticIndex called, ready:', semanticReady, 'index.length:', semanticIndex.length);
             if (!semanticReady || !semanticIndex.length) return null;
-            console.log('[semantic] calling workerEmbed...');
             const qEmb = await workerEmbed(query);
-            console.log('[semantic] workerEmbed done, emb.length:', qEmb?.length);
-            console.log('[semantic] scoring...');
-            const badItems = semanticIndex.filter(item => !Array.isArray(item.emb) || item.emb.length !== qEmb.length);
-            if (badItems.length) console.warn('[semantic] items with bad emb:', badItems.length, 'sample:', badItems[0]?.emb);
             const allScored = semanticIndex
                 .filter(item => Array.isArray(item.emb) && item.emb.length === qEmb.length)
                 .map(item => ({ ...item, score: cosineSim(qEmb, item.emb) }));
             allScored.sort((a, b) => b.score - a.score);
-            console.log('[semantic] top scores:', allScored.slice(0, 5).map(i => i.score.toFixed(3)));
             const scored = allScored.filter(item => item.score > 0.15).slice(0, 6);
-            console.log('[semantic] scored.length:', scored.length);
             if (!scored.length) return null;
-            console.log('[semantic] building DOM frag...');
 
             const queryWords = query.trim().split(/\s+/).filter(Boolean);
             const frag = document.createDocumentFragment();
@@ -1926,13 +1916,11 @@ onmessage = async ({ data }) => {
                 });
                 frag.appendChild(group);
             }
-            console.log('[semantic] frag built, childCount:', frag.childNodes.length);
             return frag;
         }
 
         // Добавляет блок "По смыслу" в конец searchResults
         async function appendSemanticResults(query, container) {
-            console.log('[semantic] appendSemanticResults, smartSearch:', localStorage.getItem('smartSearch'), 'ready:', semanticReady);
             if (localStorage.getItem('smartSearch') === 'off') return;
             if (query.trim().length < 3) return;
 
@@ -1943,7 +1931,6 @@ onmessage = async ({ data }) => {
 
             try {
                 const frag = await querySemanticIndex(query);
-                console.log('[semantic] frag:', frag, 'container in DOM:', document.contains(container));
                 if (!frag) return;
 
                 const section = document.createElement('div');
