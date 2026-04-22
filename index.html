@@ -514,6 +514,9 @@
         }, { passive: true });
 
         // ── Disable pinch zoom (iOS Safari ignores viewport user-scalable=no) ──
+        document.addEventListener('touchstart', e => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
         document.addEventListener('touchmove', e => {
             if (e.touches.length > 1) e.preventDefault();
         }, { passive: false });
