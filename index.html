@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0240';
+        const APP_VERSION = '20260423-0250';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -953,7 +953,7 @@
                     + '<button id="clear-cache-btn" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-size:14px;cursor:pointer">Очистить кэш</button>'
                     + '<div style="margin-top:16px;border-radius:8px;background:var(--toc-bg);border:1px solid var(--border);overflow:hidden">'
                     + '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">'
-                    + '<div><div style="font-weight:600;font-size:15px">Умный поиск</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">ML-модель, поиск по смыслу</div></div>'
+                    + '<div><div style="font-weight:600;font-size:15px;display:flex;align-items:center;gap:6px">Умный поиск<button id="smart-search-info-btn" style="width:18px;height:18px;border-radius:50%;border:1.5px solid var(--text-muted);background:transparent;color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;padding:0;line-height:1;flex-shrink:0">i</button></div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">ML-модель, поиск по смыслу</div></div>'
                     + '<label style="position:relative;display:inline-block;width:44px;height:26px;flex-shrink:0">'
                     + '<input type="checkbox" id="smart-search-toggle" style="opacity:0;width:0;height:0" ' + (localStorage.getItem('smartSearch') !== 'off' ? 'checked' : '') + '>'
                     + '<span id="smart-search-thumb" style="position:absolute;inset:0;border-radius:13px;background:' + (localStorage.getItem('smartSearch') !== 'off' ? 'var(--link)' : 'var(--toggle-bg)') + ';transition:.2s;cursor:pointer"></span>'
@@ -987,6 +987,22 @@
 
                 el.querySelectorAll('[data-accent]').forEach(btn => {
                     btn.addEventListener('click', () => applyAccent(btn.dataset.accent));
+                });
+
+                el.querySelector('#smart-search-info-btn').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    showModal(
+                        'Умный поиск',
+                        '<p style="margin:0 0 12px">Обычный поиск ищет точное совпадение слов. Умный поиск понимает <strong>смысл</strong> запроса — находит релевантные фрагменты даже если слова не совпадают.</p>'
+                        + '<p style="margin:0 0 12px">Например, по запросу <em>«животные»</em> найдёт текст про панд и тигров, хотя слова «животные» там нет.</p>'
+                        + '<p style="margin:0 0 12px">Работает <strong>офлайн</strong> — ML-модель (~50 МБ) скачивается один раз и кэшируется. В Китае интернет не нужен.</p>'
+                        + '<p style="margin:0 0 4px"><strong>Как использовать:</strong></p>'
+                        + '<ol style="margin:0;padding-left:20px;line-height:1.8">'
+                        + '<li>Нажмите «Запустить индексацию» — это займёт минуту при первом запуске</li>'
+                        + '<li>После завершения результаты по смыслу появляются автоматически под обычными</li>'
+                        + '<li>Индекс сохраняется и загружается при следующих запусках</li>'
+                        + '</ol>'
+                    );
                 });
 
                 el.querySelector('#smart-search-toggle').addEventListener('change', function() {
@@ -1936,7 +1952,7 @@ onmessage = async ({ data }) => {
                 const section = document.createElement('div');
                 section.dataset.semanticSection = '1';
                 const hdr = document.createElement('div');
-                hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
+                hdr.style.cssText = 'padding:16px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
                 hdr.textContent = 'По смыслу';
                 section.appendChild(hdr);
                 section.appendChild(frag);
@@ -2094,6 +2110,22 @@ onmessage = async ({ data }) => {
 
         const toast = document.getElementById('toast');
         let toastTimer = null;
+        function showModal(title, bodyHtml) {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center;padding:0';
+            const sheet = document.createElement('div');
+            sheet.style.cssText = 'background:var(--bg);border-radius:20px 20px 0 0;padding:24px 20px 40px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 -4px 24px rgba(0,0,0,.15)';
+            sheet.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+                + '<strong style="font-size:17px">' + title + '</strong>'
+                + '<button style="border:none;background:none;font-size:22px;cursor:pointer;color:var(--text-muted);padding:0;line-height:1" id="_modal-close">×</button>'
+                + '</div>' + bodyHtml;
+            overlay.appendChild(sheet);
+            document.body.appendChild(overlay);
+            const close = () => overlay.remove();
+            sheet.querySelector('#_modal-close').addEventListener('click', close);
+            overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+        }
+
         function showToast(msg, onClick, duration) {
             toast.textContent = msg;
             toast.classList.add('visible');
