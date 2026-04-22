@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <title>Китайские делишки</title>
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/256/4545/4545114.png">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Китай 2026">
+    <meta name="theme-color" content="#C0392B">
     <script>
         // Apply theme before paint to avoid flash
         (function() {
@@ -536,6 +540,10 @@
         // Safari proprietary gesture system (keep on document — not scroll-related)
         document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
         document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
+        }
 
         const hash = location.hash.slice(1);
         const initial = PAGES.find(p => p.file.replace('.md', '') === hash);

@@ -1,0 +1,15 @@
+{
+    "name": "Китайские делишки",
+    "short_name": "Китай 2026",
+    "start_url": "./",
+    "display": "standalone",
+    "background_color": "#FEFBF6",
+    "theme_color": "#C0392B",
+    "icons": [
+        {
+            "src": "https://cdn-icons-png.flaticon.com/256/4545/4545114.png",
+            "sizes": "256x256",
+            "type": "image/png"
+        }
+    ]
+}
