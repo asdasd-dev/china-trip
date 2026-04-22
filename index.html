@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '1.9';
+        const APP_VERSION = '2.0';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -869,6 +869,7 @@
                 const v = APP_VERSION;
                 const changelog = [
                     { date: '23.04.2026', items: [
+                        'Настройки: "Обновить приложение" теперь проверяет новый SW, "Очистить кэш" удаляет модель и индекс',
                         'Умный поиск: в карточке показывается статус ML-модели — скачана / частично / не скачана',
                         'Обновление: автоматическое применение новой версии при разворачивании приложения (cache: reload исключает старые файлы)',
                         'Уведомление об обновлении: тост снова показывается при каждом возврате в приложение',
@@ -1034,9 +1035,26 @@
                 });
 
                 el.querySelector('#update-btn').addEventListener('click', async function() {
-                    this.textContent = 'Обновляю...';
+                    this.textContent = 'Проверяю...';
                     this.disabled = true;
-                    await hardReload();
+                    if (swReg?.waiting) {
+                        // Уже есть готовый SW — активируем сразу
+                        swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    } else if (swReg) {
+                        // Запрашиваем проверку обновления у браузера
+                        try { await swReg.update(); } catch(e) {}
+                        // Если новый SW установился — он активируется сам (skipWaiting в install)
+                        // и controllerchange сделает reload. Если нет — сообщаем.
+                        setTimeout(() => {
+                            if (!updateAvailable) {
+                                this.textContent = updateAvailable ? '🔄 Установить обновление' : 'Обновить приложение';
+                                this.disabled = false;
+                                showToast('✅ Версия актуальна', null, 2500);
+                            }
+                        }, 3000);
+                    } else {
+                        location.reload();
+                    }
                 });
 
                 refreshModelStatus();
@@ -1064,20 +1082,22 @@
                 el.querySelector('#clear-cache-btn').addEventListener('click', async function() {
                     this.textContent = 'Очищаю...';
                     this.disabled = true;
-                    // Чистим SW кэш (кроме модели) + IDB с семантическим индексом
-                    if ('serviceWorker' in navigator) {
-                        const reg = await navigator.serviceWorker.getRegistration();
-                        if (reg) await reg.unregister();
-                        const keys = await caches.keys();
-                        await Promise.all(keys.filter(k => k !== 'china-trip-models').map(k => caches.delete(k)));
-                    }
+                    // Удаляем модель и семантический индекс
+                    try { await caches.delete('china-trip-models'); } catch(e) {}
                     try {
                         const db = await idbOpen();
                         const tx = db.transaction(IDB_STORE, 'readwrite');
                         tx.objectStore(IDB_STORE).clear();
                         await new Promise(r => { tx.oncomplete = r; });
                     } catch(e) { console.warn('IDB clear failed:', e); }
-                    window.location.reload();
+                    semanticReady = false;
+                    semanticIndex = [];
+                    semanticIndexing = false;
+                    refreshSemanticStatus();
+                    refreshModelStatus();
+                    this.textContent = 'Очистить кэш';
+                    this.disabled = false;
+                    showToast('🗑 Кэш очищен', null, 2500);
                 });
 
                 requestAnimationFrame(() => {
