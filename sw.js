@@ -1,4 +1,4 @@
-const VERSION = '1.7';
+const VERSION = '1.8';
 const CACHE = 'china-trip-' + VERSION;
 const MODEL_CACHE = 'china-trip-models'; // персистентный, не удаляется при обновлениях
 
@@ -18,11 +18,12 @@ self.addEventListener('message', e => {
 });
 
 self.addEventListener('install', e => {
-    // НЕ вызываем skipWaiting() — SW остаётся в waiting до явного SKIP_WAITING от пользователя.
-    // Это предотвращает авто-перезагрузку страницы без согласия пользователя.
+    // cache: 'reload' — обходим HTTP-кэш браузера, берём свежие файлы прямо с CDN.
+    // skipWaiting() — активируемся сразу после установки, без ожидания пользователя.
     e.waitUntil(
         caches.open(CACHE)
             .then(c => c.addAll(PRECACHE.map(url => new Request(url, { cache: 'reload' }))))
+            .then(() => self.skipWaiting())
     );
 });
 

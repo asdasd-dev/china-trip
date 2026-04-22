@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '1.7';
+        const APP_VERSION = '1.8';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -869,7 +869,7 @@
                 const v = APP_VERSION;
                 const changelog = [
                     { date: '23.04.2026', items: [
-                        'Обновление: исправлен механизм установки новой версии — SW больше не активируется автоматически, ждёт нажатия кнопки',
+                        'Обновление: автоматическое применение новой версии при разворачивании приложения (cache: reload исключает старые файлы)',
                         'Уведомление об обновлении: тост снова показывается при каждом возврате в приложение',
                     ]},
                     { date: '23.04.2026', items: [
