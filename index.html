@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '2.2';
+        const APP_VERSION = '2.3';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1893,14 +1893,13 @@ onmessage = async ({ data }) => {
                         reject(new Error(data.msg));
                     } else if (data.type === 'progress') {
                         const p = data.p;
+                        console.log('[model progress]', p?.status, p);
                         const el = document.getElementById('model-status-text');
                         if (el && p) {
-                            if (p.status === 'downloading' && p.file) {
+                            if ((p.status === 'downloading' || p.status === 'progress') && p.file) {
                                 const pct = p.progress != null ? Math.round(p.progress) + '%' : '';
                                 const fname = p.file.split('/').pop();
                                 el.textContent = '📥 Скачивание: ' + fname + (pct ? ' · ' + pct : '');
-                            } else if (p.status === 'loading' && p.file) {
-                                el.textContent = '⏳ Загрузка модели в память…';
                             }
                         }
                     } else {
