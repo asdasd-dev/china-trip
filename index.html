@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2308';
+        const APP_VERSION = '20260422-2311';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1576,11 +1576,66 @@
         }
 
         // Запускается один раз при старте приложения
+        // ── IndexedDB persistence для эмбеддингов ──
+        const IDB_NAME = 'china-trip-semantic';
+        const IDB_STORE = 'index';
+
+        function idbOpen() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+                req.onsuccess = e => resolve(e.target.result);
+                req.onerror = e => reject(e.target.error);
+            });
+        }
+
+        async function idbLoad() {
+            try {
+                const db = await idbOpen();
+                return await new Promise((resolve, reject) => {
+                    const tx = db.transaction(IDB_STORE, 'readonly');
+                    const req = tx.objectStore(IDB_STORE).get(APP_VERSION);
+                    req.onsuccess = e => resolve(e.target.result || null);
+                    req.onerror = e => reject(e.target.error);
+                });
+            } catch { return null; }
+        }
+
+        async function idbSave(data) {
+            try {
+                const db = await idbOpen();
+                // Удаляем старые версии
+                const keys = await new Promise((resolve, reject) => {
+                    const tx = db.transaction(IDB_STORE, 'readonly');
+                    const req = tx.objectStore(IDB_STORE).getAllKeys();
+                    req.onsuccess = e => resolve(e.target.result);
+                    req.onerror = e => reject(e.target.error);
+                });
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                const store = tx.objectStore(IDB_STORE);
+                keys.forEach(k => { if (k !== APP_VERSION) store.delete(k); });
+                store.put(data, APP_VERSION);
+            } catch(e) { console.warn('idbSave failed:', e); }
+        }
+
         async function startBackgroundIndexing() {
             if (semanticReady || semanticIndexing) return;
             semanticIndexing = true;
             try {
-                // Создаём воркер как blob — никаких дополнительных файлов
+                // Пробуем загрузить готовый индекс из IndexedDB
+                const cached = await idbLoad();
+                if (cached) {
+                    // Восстанавливаем: page хранили как file, восстанавливаем ссылку на объект
+                    semanticIndex = cached.map(item => ({
+                        ...item,
+                        page: PAGES.find(p => p.file === item.pageFile),
+                    })).filter(item => item.page);
+                    semanticReady = true;
+                    semanticIndexing = false;
+                    return;
+                }
+
+                // Кэша нет — строим индекс и сохраняем
                 const workerSrc = `
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2/dist/transformers.min.js';
 let pipe = null;
@@ -1612,7 +1667,6 @@ onmessage = async ({ data }) => {
                 };
                 semanticWorker.onerror = e => console.error('Semantic worker error:', e);
 
-                // Ждём инициализации модели (может занять время при первой загрузке)
                 await new Promise((resolve, reject) => {
                     const orig = semanticWorker.onmessage;
                     semanticWorker.onmessage = ({ data }) => {
@@ -1623,7 +1677,6 @@ onmessage = async ({ data }) => {
                     semanticWorker.postMessage({ type: 'init' });
                 });
 
-                // Строим индекс по всем страницам
                 const pages = PAGES.filter(p => p.file !== 'settings');
                 for (const page of pages) {
                     let raw = pageCache.get(page.file);
@@ -1632,7 +1685,6 @@ onmessage = async ({ data }) => {
                         catch { continue; }
                     }
                     const chunks = chunkText(cleanMd(raw));
-                    // Все чанки страницы параллельно — воркер обрабатывает по очереди, но без лишних round-trip пауз
                     const embs = await Promise.all(chunks.map(c => workerEmbed(c)));
                     chunks.forEach((chunk, i) => {
                         const pos = raw.toLowerCase().indexOf(chunk.slice(0, 40).toLowerCase());
@@ -1640,9 +1692,11 @@ onmessage = async ({ data }) => {
                     });
                 }
 
+                // Сохраняем в IDB (page → pageFile чтобы не хранить циклические ссылки)
+                await idbSave(semanticIndex.map(item => ({ ...item, page: undefined, pageFile: item.page.file })));
+
                 semanticReady = true;
                 semanticIndexing = false;
-                // Тихое завершение — не спамим тостом если пользователь не просил поиск
             } catch(e) {
                 console.error('Background indexing failed:', e);
                 semanticIndexing = false;
