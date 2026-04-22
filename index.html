@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '2.3';
+        const APP_VERSION = '2.4';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -979,7 +979,7 @@
                     + '</div>' // закрываем settings-info
 
                     + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>'
-                    + '<div id="settings-console" style="display:none"><div id="console-log" style="font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;padding:8px 0;min-height:200px"></div></div>';
+                    + '<div id="settings-console" style="display:none"><div style="padding:8px 0 4px;display:flex;justify-content:flex-end"><button id="copy-log-btn" style="padding:4px 12px;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer">Скопировать</button></div><div id="console-log" style="font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;padding:4px 0;min-height:200px"></div></div>';
 
                 el.querySelector('#settings-tabs').addEventListener('click', e => {
                     const btn = e.target.closest('button');
@@ -989,7 +989,13 @@
                     el.querySelector('#settings-info').style.display = btn.dataset.tab === 'info' ? '' : 'none';
                     el.querySelector('#settings-changelog').style.display = btn.dataset.tab === 'changelog' ? '' : 'none';
                     el.querySelector('#settings-console').style.display = btn.dataset.tab === 'console' ? '' : 'none';
-                    if (btn.dataset.tab === 'console') renderConsoleLog();
+                    if (btn.dataset.tab === 'console') {
+                        renderConsoleLog();
+                        el.querySelector('#copy-log-btn').onclick = () => {
+                            const text = _consoleLogs.slice().reverse().map(e => e.ts + ' [' + e.level + '] ' + e.text).join('\n');
+                            navigator.clipboard.writeText(text).then(() => showToast('📋 Скопировано', null, 1500));
+                        };
+                    }
                 });
 
                 el.querySelectorAll('[data-theme-btn]').forEach(btn => {
@@ -1093,6 +1099,7 @@
                     semanticReady = false;
                     semanticIndex = [];
                     semanticIndexing = false;
+                    modelLoaded = false;
                     refreshSemanticStatus();
                     refreshModelStatus();
                     this.textContent = 'Очистить кэш';
@@ -1770,6 +1777,7 @@
         let semanticIndex = [];
         let semanticReady = false;   // индекс полностью построен
         let semanticIndexing = false; // идёт фоновая индексация
+        let modelLoaded = false;     // модель успешно инициализирована в воркере (кэш гарантирован)
 
         function cosineSim(a, b) {
             let dot = 0, na = 0, nb = 0;
@@ -1887,7 +1895,8 @@ onmessage = async ({ data }) => {
                 semanticWorker.onmessage = ({ data }) => {
                     if (data.type === 'ready') {
                         semanticWorker.onmessage = orig;
-                        refreshModelStatus(); // модель полностью скачана — обновим статус
+                        modelLoaded = true;
+                        refreshModelStatus();
                         resolve();
                     } else if (data.type === 'error' && data.id == null) {
                         reject(new Error(data.msg));
@@ -1932,10 +1941,14 @@ onmessage = async ({ data }) => {
         async function refreshModelStatus() {
             const el = document.getElementById('model-status-text');
             if (!el) return;
+            // Если воркер уже инициализирован — модель точно есть, не ждём async cache.put()
+            if (modelLoaded) {
+                el.textContent = '✅ Модель готова (офлайн)';
+                return;
+            }
             try {
                 const cache = await caches.open('china-trip-models');
                 const keys = await cache.keys();
-                // Считаем файлы модели (не считаем лишнее)
                 const modelFiles = keys.filter(r => r.url.includes('huggingface.co'));
                 const hasOnnx = modelFiles.some(r => r.url.includes('model_quantized.onnx'));
                 if (hasOnnx) {

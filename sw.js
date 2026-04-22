@@ -1,4 +1,4 @@
-const VERSION = '2.3';
+const VERSION = '2.4';
 const CACHE = 'china-trip-' + VERSION;
 const MODEL_CACHE = 'china-trip-models'; // персистентный, не удаляется при обновлениях
 
