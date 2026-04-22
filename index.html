@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0005';
+        const APP_VERSION = '20260423-0020';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1705,9 +1705,10 @@ onmessage = async ({ data }) => {
                     })).filter(item => item.page);
                     semanticReady = true;
                     semanticIndexing = false;
-                    // Воркер нужен для эмбеддинга запроса — запускаем в фоне
-                    createWorker().catch(e => console.error('Worker init failed:', e));
-                    triggerSemanticIfSearchOpen();
+                    // Воркер нужен для эмбеддинга запроса — ждём готовности перед тригером
+                    createWorker()
+                        .then(() => triggerSemanticIfSearchOpen())
+                        .catch(e => console.error('Worker init failed:', e));
                     return;
                 }
 
@@ -1761,11 +1762,10 @@ onmessage = async ({ data }) => {
         async function querySemanticIndex(query) {
             if (!semanticReady || !semanticIndex.length) return null;
             const qEmb = await workerEmbed(query);
-            const scored = semanticIndex
-                .map(item => ({ ...item, score: cosineSim(qEmb, item.emb) }))
-                .filter(item => item.score > 0.25)
-                .sort((a, b) => b.score - a.score)
-                .slice(0, 6);
+            const allScored = semanticIndex.map(item => ({ ...item, score: cosineSim(qEmb, item.emb) }));
+            allScored.sort((a, b) => b.score - a.score);
+            console.log('[semantic] top scores:', allScored.slice(0, 3).map(i => i.score.toFixed(3)));
+            const scored = allScored.filter(item => item.score > 0.2).slice(0, 6);
             if (!scored.length) return null;
 
             const queryWords = query.trim().split(/\s+/).filter(Boolean);
@@ -1819,14 +1819,18 @@ onmessage = async ({ data }) => {
                 return;
             }
 
-            const frag = await querySemanticIndex(query);
-            if (!frag) return;
+            try {
+                const frag = await querySemanticIndex(query);
+                if (!frag) return;
 
-            const hdr = document.createElement('div');
-            hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
-            hdr.textContent = 'По смыслу';
-            container.appendChild(hdr);
-            container.appendChild(frag);
+                const hdr = document.createElement('div');
+                hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
+                hdr.textContent = 'По смыслу';
+                container.appendChild(hdr);
+                container.appendChild(frag);
+            } catch(e) {
+                console.error('Semantic search error:', e);
+            }
         }
 
         async function showSemanticResults(query, btn) {
