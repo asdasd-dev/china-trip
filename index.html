@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2242';
+        const APP_VERSION = '20260422-2246';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1791,24 +1791,49 @@
                     hdr.textContent = 'Похожие результаты';
                     searchResults.appendChild(hdr);
                     searchResults.appendChild(fuzzyFrag);
+                    if (query.trim().length >= 3) appendSmartSearchBtn(query);
                 } else if (query.trim().length >= 3) {
                     if (semanticReady) {
                         await showSemanticResults(query);
                     } else {
-                        searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🔍</div>Анализирую…</div>';
-                        const ok = await initSemanticSearch();
-                        if (ok) {
-                            await showSemanticResults(query);
-                        } else {
-                            searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🤷</div>Ничего не найдено</div>';
-                        }
+                        searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🤷</div>Ничего не найдено</div>';
+                        appendSmartSearchBtn(query);
                     }
                 } else {
                     searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🤷</div>Ничего не найдено</div>';
                 }
             } else {
                 searchResults.appendChild(frag);
+                if (query.trim().length >= 3) appendSmartSearchBtn(query);
             }
+        }
+
+        function appendSmartSearchBtn(query) {
+            if (semanticLoading) return; // уже грузится
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'padding:12px 16px 4px;display:flex;justify-content:center';
+            const btn = document.createElement('button');
+            btn.style.cssText = 'padding:8px 18px;border-radius:20px;border:1.5px solid var(--link);background:transparent;color:var(--link);font-size:0.9em;cursor:pointer;font-family:inherit';
+            btn.textContent = semanticReady ? '🔍 Умный поиск' : '🔍 Умный поиск (загрузить модель)';
+            btn.addEventListener('click', async () => {
+                wrap.remove();
+                if (semanticReady) {
+                    await showSemanticResults(query);
+                } else {
+                    searchResults.appendChild(Object.assign(document.createElement('div'), {
+                        style: 'padding:12px 16px;color:var(--text-muted);text-align:center;font-size:0.9em',
+                        textContent: '⏳ Загружаю модель…'
+                    }));
+                    const ok = await initSemanticSearch();
+                    if (ok) {
+                        await showSemanticResults(query);
+                    } else {
+                        showToast('❌ Не удалось загрузить модель', null, 4000);
+                    }
+                }
+            });
+            wrap.appendChild(btn);
+            searchResults.appendChild(wrap);
         }
 
         // ── Pull-to-search gesture ──
