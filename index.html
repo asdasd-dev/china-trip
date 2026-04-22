@@ -668,7 +668,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2137';
+        const APP_VERSION = '20260422-2139';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1323,11 +1323,31 @@
         // ── Разговорник: карточки + озвучка ──
         function speakChinese(text) {
             if (!window.speechSynthesis) return;
-            speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'zh-CN';
-            u.rate = 0.85;
-            speechSynthesis.speak(u);
+
+            // iOS PWA: синтез паузится при уходе в фон — принудительно возобновляем
+            speechSynthesis.resume();
+            if (speechSynthesis.speaking) speechSynthesis.cancel();
+
+            const doSpeak = () => {
+                const u = new SpeechSynthesisUtterance(text);
+                u.lang = 'zh-CN';
+                u.rate = 0.85;
+                // Явно выбираем китайский голос если есть
+                const voices = speechSynthesis.getVoices();
+                const zhVoice = voices.find(v => v.lang.startsWith('zh'));
+                if (zhVoice) u.voice = zhVoice;
+                speechSynthesis.speak(u);
+            };
+
+            // Голоса могут ещё не загрузиться (особенно первый вызов)
+            if (speechSynthesis.getVoices().length === 0) {
+                speechSynthesis.onvoiceschanged = () => {
+                    speechSynthesis.onvoiceschanged = null;
+                    doSpeak();
+                };
+            } else {
+                doSpeak();
+            }
         }
 
         // Иероглифы и пиньинь часто смешаны в одной ячейке вида "停这里 tíng zhè lǐ"
