@@ -25,6 +25,27 @@
             var a = localStorage.getItem('accent') || 'red';
             var entry = accents[a] || accents.red;
             var color = t === 'dark' ? entry.dark : entry.light;
+            // Full light palette for secondary colors (only needed in light mode before JS runs)
+            var lightPalettes = {
+                red:    { tocBg: '#FFF7ED', tocTitle: '#92400E', border: '#F0DCC0', tocDivider: '#f5dfc0', bqText: '#8c5a3a' },
+                orange: { tocBg: '#FFF3E0', tocTitle: '#7c3a00', border: '#F5CBA7', tocDivider: '#f5c490', bqText: '#7c4a20' },
+                gold:   { tocBg: '#FFFDE7', tocTitle: '#5c4400', border: '#F0D878', tocDivider: '#e8cc50', bqText: '#7a5e10' },
+                green:  { tocBg: '#F0FFF4', tocTitle: '#1a5c30', border: '#A9DFBF', tocDivider: '#90d4a8', bqText: '#2e7d46' },
+                blue:   { tocBg: '#EBF5FB', tocTitle: '#154360', border: '#AED6F1', tocDivider: '#90c8ec', bqText: '#1a5276' },
+                purple: { tocBg: '#F5EEF8', tocTitle: '#4a235a', border: '#D7BDE2', tocDivider: '#c8a8d8', bqText: '#6c3483' },
+            };
+            if (t !== 'dark') {
+                var lp = lightPalettes[a] || lightPalettes.red;
+                r.style.setProperty('--toc-bg', lp.tocBg);
+                r.style.setProperty('--toc-title', lp.tocTitle);
+                r.style.setProperty('--toc-divider', lp.tocDivider);
+                r.style.setProperty('--th-bg', lp.tocBg);
+                r.style.setProperty('--code-bg', lp.tocBg);
+                r.style.setProperty('--border', lp.border);
+                r.style.setProperty('--h-border', lp.border);
+                r.style.setProperty('--blockquote-border', lp.border);
+                r.style.setProperty('--blockquote-text', lp.bqText);
+            }
             var r = document.documentElement;
             r.style.setProperty('--link', color);
             r.style.setProperty('--toc-link', color);
@@ -345,7 +366,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1937';
+        const APP_VERSION = '20260422-1952';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -359,12 +380,24 @@
         ];
 
         const ACCENTS = [
-            { id: 'red',    label: 'Красный',     light: '#C0392B', dark: '#FF6B6B' },
-            { id: 'orange', label: 'Оранжевый',   light: '#D35400', dark: '#FF9F43' },
-            { id: 'gold',   label: 'Золотой',     light: '#B7860B', dark: '#F0C040' },
-            { id: 'green',  label: 'Зелёный',     light: '#27AE60', dark: '#55EFC4' },
-            { id: 'blue',   label: 'Синий',       light: '#1A6FA8', dark: '#74B9FF' },
-            { id: 'purple', label: 'Фиолетовый',  light: '#7D3C98', dark: '#A29BFE' },
+            { id: 'red',    label: 'Красный',
+              light: { color: '#C0392B', tocBg: '#FFF7ED', tocTitle: '#92400E', border: '#F0DCC0', tocDivider: '#f5dfc0', bqText: '#8c5a3a' },
+              dark:  { color: '#FF6B6B' } },
+            { id: 'orange', label: 'Оранжевый',
+              light: { color: '#D35400', tocBg: '#FFF3E0', tocTitle: '#7c3a00', border: '#F5CBA7', tocDivider: '#f5c490', bqText: '#7c4a20' },
+              dark:  { color: '#FF9F43' } },
+            { id: 'gold',   label: 'Золотой',
+              light: { color: '#B7860B', tocBg: '#FFFDE7', tocTitle: '#5c4400', border: '#F0D878', tocDivider: '#e8cc50', bqText: '#7a5e10' },
+              dark:  { color: '#F0C040' } },
+            { id: 'green',  label: 'Зелёный',
+              light: { color: '#27AE60', tocBg: '#F0FFF4', tocTitle: '#1a5c30', border: '#A9DFBF', tocDivider: '#90d4a8', bqText: '#2e7d46' },
+              dark:  { color: '#55EFC4' } },
+            { id: 'blue',   label: 'Синий',
+              light: { color: '#1A6FA8', tocBg: '#EBF5FB', tocTitle: '#154360', border: '#AED6F1', tocDivider: '#90c8ec', bqText: '#1a5276' },
+              dark:  { color: '#74B9FF' } },
+            { id: 'purple', label: 'Фиолетовый',
+              light: { color: '#7D3C98', tocBg: '#F5EEF8', tocTitle: '#4a235a', border: '#D7BDE2', tocDivider: '#c8a8d8', bqText: '#6c3483' },
+              dark:  { color: '#A29BFE' } },
         ];
 
         let currentPage = PAGES[0].file;
@@ -374,13 +407,41 @@
         // ── Accent + Theme ──
         function _applyAccentColors(accent) {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            const color = isDark ? accent.dark : accent.light;
             const r = document.documentElement;
-            r.style.setProperty('--link', color);
-            r.style.setProperty('--toc-link', color);
-            r.style.setProperty('--nav-accent', color);
-            r.style.setProperty('--scroll-bg', color);
-            r.style.setProperty('--city-btn-active-bg', color);
+            if (isDark) {
+                const { color } = accent.dark;
+                r.style.setProperty('--link', color);
+                r.style.setProperty('--toc-link', color);
+                r.style.setProperty('--nav-accent', color);
+                r.style.setProperty('--scroll-bg', color);
+                r.style.setProperty('--city-btn-active-bg', color);
+                // Dark mode secondary colors are always neutral — remove any light overrides
+                r.style.removeProperty('--toc-bg');
+                r.style.removeProperty('--toc-title');
+                r.style.removeProperty('--toc-divider');
+                r.style.removeProperty('--th-bg');
+                r.style.removeProperty('--code-bg');
+                r.style.removeProperty('--border');
+                r.style.removeProperty('--h-border');
+                r.style.removeProperty('--blockquote-border');
+                r.style.removeProperty('--blockquote-text');
+            } else {
+                const { color, tocBg, tocTitle, border, tocDivider, bqText } = accent.light;
+                r.style.setProperty('--link', color);
+                r.style.setProperty('--toc-link', color);
+                r.style.setProperty('--nav-accent', color);
+                r.style.setProperty('--scroll-bg', color);
+                r.style.setProperty('--city-btn-active-bg', color);
+                r.style.setProperty('--toc-bg', tocBg);
+                r.style.setProperty('--toc-title', tocTitle);
+                r.style.setProperty('--toc-divider', tocDivider);
+                r.style.setProperty('--th-bg', tocBg);
+                r.style.setProperty('--code-bg', tocBg);
+                r.style.setProperty('--border', border);
+                r.style.setProperty('--h-border', border);
+                r.style.setProperty('--blockquote-border', border);
+                r.style.setProperty('--blockquote-text', bqText);
+            }
         }
 
         function applyAccent(id) {
@@ -482,7 +543,7 @@
                 const currentAccent = localStorage.getItem('accent') || 'red';
 
                 const accentSwatches = ACCENTS.map(a => {
-                    const color = currentTheme === 'dark' ? a.dark : a.light;
+                    const color = currentTheme === 'dark' ? a.dark.color : a.light.color;
                     const isActive = a.id === currentAccent;
                     return '<button data-accent="' + a.id + '" title="' + a.label + '" style="'
                         + 'width:36px;height:36px;border-radius:50%;cursor:pointer;'
