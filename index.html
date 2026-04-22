@@ -423,7 +423,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2252';
+        const APP_VERSION = '20260423-0005';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -684,25 +684,15 @@
                     this.textContent = 'Обновляю...';
                     this.disabled = true;
                     try {
-                        if (!('serviceWorker' in navigator)) { window.location.reload(); return; }
-                        const reg = await navigator.serviceWorker.getRegistration();
-                        if (!reg) { window.location.reload(); return; }
-
-                        // Слушаем ПЕРЕД update() — иначе можем пропустить событие
-                        const controlled = new Promise(resolve => {
-                            navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
-                            setTimeout(resolve, 10000); // fallback на случай зависания
-                        });
-
-                        await reg.update();
-
-                        // Нет нового SW — просто перезагружаем
-                        if (!reg.installing && !reg.waiting) { window.location.reload(); return; }
-
-                        // Ждём пока новый SW активируется и возьмёт контроль, затем перезагружаем
-                        await controlled;
-                        window.location.reload();
-                    } catch (e) {
+                        // Снимаем регистрацию SW и очищаем кэши —
+                        // после reload страница грузится напрямую из сети (новая версия гарантирована)
+                        if ('serviceWorker' in navigator) {
+                            const reg = await navigator.serviceWorker.getRegistration();
+                            if (reg) await reg.unregister();
+                            const keys = await caches.keys();
+                            await Promise.all(keys.map(k => caches.delete(k)));
+                        }
+                    } finally {
                         window.location.reload();
                     }
                 });
@@ -943,7 +933,7 @@
         document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
+            navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
         }
 
         const toast = document.getElementById('toast');
