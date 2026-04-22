@@ -1,4 +1,4 @@
-const VERSION = '20260422-1802';
+const VERSION = '$TS';
 const CACHE = 'china-trip-' + VERSION;
 
 const PRECACHE = [
@@ -29,8 +29,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
-    // Не кэшируем Firebase и не-GET запросы
-    if (url.hostname.includes('firebasedatabase') || e.request.method !== 'GET') return;
+    // Не кэшируем Firebase, version.txt и не-GET запросы
+    if (url.hostname.includes('firebasedatabase') || url.pathname.endsWith('version.txt') || e.request.method !== 'GET') return;
 
     e.respondWith(
         caches.open(CACHE).then(cache =>

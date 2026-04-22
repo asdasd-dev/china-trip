@@ -623,18 +623,26 @@
         document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js').then(reg => {
-                document.addEventListener('visibilitychange', () => {
-                    if (document.visibilityState === 'visible') reg.update();
-                });
-            });
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                updateAvailable = true;
-                const settingsBtn = nav.querySelector('[data-file="settings"]');
-                if (settingsBtn) settingsBtn.classList.add('has-update');
-                if (currentPage === 'settings') loadPage('settings', { skipSave: true });
-            });
+            navigator.serviceWorker.register('./sw.js');
         }
+
+        function checkVersion() {
+            fetch('./version.txt?t=' + Date.now(), { cache: 'no-store' })
+                .then(r => r.text())
+                .then(v => {
+                    if (v.trim() !== APP_VERSION && !updateAvailable) {
+                        updateAvailable = true;
+                        const settingsBtn = nav.querySelector('[data-file="settings"]');
+                        if (settingsBtn) settingsBtn.classList.add('has-update');
+                        if (currentPage === 'settings') loadPage('settings', { skipSave: true });
+                    }
+                })
+                .catch(() => {});
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkVersion();
+        });
 
         const hash = location.hash.slice(1);
         const initial = PAGES.find(p => p.file.replace('.md', '') === hash);
