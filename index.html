@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0415';
+        const APP_VERSION = '20260423-0430';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1529,7 +1529,8 @@
                     div.appendChild(p);
                     div.addEventListener('click', () => {
                         closeSearch();
-                        loadPage(page.file, { searchQuery: fw[0] });
+                        const snippetAnchor = snippet.replace(/^…/, '').trim().split(/\s+/).slice(0, 5).join(' ');
+                        loadPage(page.file, { searchQuery: snippetAnchor });
                     });
                     group.appendChild(div);
                     total++;
@@ -2071,7 +2072,9 @@ onmessage = async ({ data }) => {
                     div.appendChild(p);
                     div.addEventListener('click', () => {
                         closeSearch();
-                        loadPage(page.file, { searchQuery: query });
+                        // Берём уникальную фразу из сниппета чтобы точно попасть в нужный блок
+                        const snippetAnchor = snippet.replace(/^…/, '').trim().split(/\s+/).slice(0, 5).join(' ');
+                        loadPage(page.file, { searchQuery: snippetAnchor });
                     });
                     group.appendChild(div);
                     total++;
