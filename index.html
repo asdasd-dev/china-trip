@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0110';
+        const APP_VERSION = '20260423-0130';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1837,8 +1837,8 @@ onmessage = async ({ data }) => {
             const qEmb = await workerEmbed(query);
             const allScored = semanticIndex.map(item => ({ ...item, score: cosineSim(qEmb, item.emb) }));
             allScored.sort((a, b) => b.score - a.score);
-            console.log('[semantic] top scores:', allScored.slice(0, 3).map(i => i.score.toFixed(3)));
-            const scored = allScored.filter(item => item.score > 0.2).slice(0, 6);
+            console.log('[semantic] top scores:', allScored.slice(0, 5).map(i => i.score.toFixed(3)));
+            const scored = allScored.filter(item => item.score > 0.15).slice(0, 6);
             if (!scored.length) return null;
 
             const queryWords = query.trim().split(/\s+/).filter(Boolean);
@@ -2110,7 +2110,23 @@ onmessage = async ({ data }) => {
         const initial = PAGES.find(p => p.file.replace('.md', '') === hash);
         loadPage(initial ? initial.file : PAGES[0].file);
 
-        // Индексация запускается вручную из настроек
+        // При старте тихо восстанавливаем индекс из IDB (если есть)
+        // Полная индексация — только по кнопке в настройках
+        async function tryRestoreFromIDB() {
+            if (localStorage.getItem('smartSearch') === 'off') return;
+            const cached = await idbLoad();
+            if (!cached) return;
+            semanticIndex = cached.map(item => ({
+                ...item,
+                page: PAGES.find(p => p.file === item.pageFile),
+            })).filter(item => item.page);
+            semanticReady = true;
+            refreshSemanticStatus();
+            createWorker()
+                .then(() => triggerSemanticIfSearchOpen())
+                .catch(e => console.error('Worker init failed:', e));
+        }
+        tryRestoreFromIDB();
     </script>
 </body>
 </html>
