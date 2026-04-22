@@ -326,6 +326,45 @@
         .toc-block a:active { opacity: 0.7; }
         a.cross-link { color: var(--link); text-decoration: underline dotted; cursor: pointer; }
         hr { display: none; }
+        #sticky-header {
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 8px);
+            left: 0; right: 0;
+            margin: 0 auto;
+            width: calc(100% - 32px);
+            max-width: 480px;
+            height: 40px;
+            border-radius: 14px;
+            z-index: 90;
+            background: rgba(255,255,255,0.78);
+            backdrop-filter: blur(28px) saturate(200%);
+            -webkit-backdrop-filter: blur(28px) saturate(200%);
+            border: 1px solid rgba(255,255,255,0.88);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            padding: 0 14px;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            opacity: 0;
+            transform: translateY(-6px);
+            transition: opacity 0.2s, transform 0.2s;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        #sticky-header.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        html[data-theme="dark"] #sticky-header {
+            background: rgba(18,18,28,0.78);
+            border: 1px solid rgba(255,255,255,0.10);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+        }
+        #sticky-header .sh-h1 { opacity: 0.5; }
+        #sticky-header .sh-sep { opacity: 0.35; margin: 0 6px; }
+        #sticky-header .sh-h2 { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         #toast {
             position: fixed;
             top: 16px;
@@ -363,6 +402,7 @@
 </head>
 <body>
     <nav id="nav"></nav>
+    <div id="sticky-header"></div>
     <div id="toast"></div>
     <div id="scroller">
         <div id="content">
@@ -374,7 +414,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2118';
+        const APP_VERSION = '20260422-2135';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -644,6 +684,7 @@
                     }
                 });
                 scroller.scrollTop = tabScrollY.get(file) || 0;
+                updateStickyHeader();
                 return;
             }
 
@@ -777,6 +818,7 @@
                 if (!opts.skipSave) {
                     scroller.scrollTop = tabScrollY.get(file) || 0;
                 }
+                updateStickyHeader();
             } catch (err) {
                 el.innerHTML = '<p style="color:red">Failed to load: ' + err.message + '</p>';
             }
@@ -793,9 +835,55 @@
             window.visualViewport.addEventListener('scroll', updateNav);
         }
 
+        // ── Sticky header ──
+        const stickyHeader = document.getElementById('sticky-header');
+        let stickyRaf = null;
+
+        function updateStickyHeader() {
+            if (currentPage === 'settings') {
+                stickyHeader.classList.remove('visible');
+                return;
+            }
+            const el = document.getElementById('content');
+            const h1s = Array.from(el.querySelectorAll('h1'));
+            const allHeadings = Array.from(el.querySelectorAll('h1, h2'));
+            if (h1s.length === 0) { stickyHeader.classList.remove('visible'); return; }
+
+            const OFFSET = 56; // ниже sticky header
+            // Показываем только когда первый h1 ушёл за экран
+            if (h1s[0].getBoundingClientRect().top >= OFFSET) {
+                stickyHeader.classList.remove('visible');
+                return;
+            }
+
+            const multiCity = h1s.length > 1;
+            let curH1 = null, curH2 = null;
+            for (const h of allHeadings) {
+                if (h.getBoundingClientRect().top < OFFSET) {
+                    if (h.tagName === 'H1') { curH1 = h; curH2 = null; }
+                    else curH2 = h;
+                }
+            }
+
+            if (!curH1) { stickyHeader.classList.remove('visible'); return; }
+
+            if (multiCity) {
+                const cityName = curH1.textContent.split('(')[0].trim();
+                stickyHeader.innerHTML = curH2
+                    ? '<span class="sh-h1">' + cityName + '</span><span class="sh-sep">›</span><span class="sh-h2">' + curH2.textContent + '</span>'
+                    : '<span class="sh-h2">' + cityName + '</span>';
+            } else {
+                stickyHeader.innerHTML = curH2
+                    ? '<span class="sh-h2">' + curH2.textContent + '</span>'
+                    : '<span class="sh-h2">' + curH1.textContent + '</span>';
+            }
+            stickyHeader.classList.add('visible');
+        }
+
         // ── Scroll: throttled tab scroll save ──
         let scrollSaveTimer = null;
         scroller.addEventListener('scroll', () => {
+            if (!stickyRaf) stickyRaf = requestAnimationFrame(() => { updateStickyHeader(); stickyRaf = null; });
             if (scrollSaveTimer) return;
             scrollSaveTimer = setTimeout(() => {
                 tabScrollY.set(currentPage, scroller.scrollTop);
