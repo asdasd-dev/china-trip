@@ -13,7 +13,8 @@
         })();
     </script>
     <style>
-        html, body { overflow-x: clip; touch-action: pan-x pan-y; overscroll-behavior: contain; }
+        html, body { height: 100%; overflow: hidden; touch-action: pan-x pan-y; }
+        #scroller { height: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
         :root {
             --nav-h: 62px;
             /* Light: warm cream */
@@ -77,11 +78,14 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
             margin: 0 auto;
-            padding: 12px 12px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 20px);
+            padding: 0;
             background: var(--bg);
             color: var(--text);
             font-size: 15px;
             transition: background 0.2s, color 0.2s;
+        }
+        #scroller {
+            padding: 12px 12px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 20px);
         }
         nav {
             position: fixed;
@@ -261,7 +265,8 @@
             pointer-events: none;
         }
         @media (min-width: 640px) {
-            body { padding: 20px 20px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 24px); max-width: 900px; font-size: 16px; }
+            body { max-width: 900px; font-size: 16px; }
+            #scroller { padding: 20px 20px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 24px); }
             #content { padding: 32px 40px; border-radius: 12px; }
             h1 { font-size: 2em; }
             h2 { font-size: 1.5em; }
@@ -275,8 +280,10 @@
 <body>
     <nav id="nav"></nav>
     <button id="theme-toggle" title="Переключить тему"></button>
-    <div id="content">
-        <div id="loading"><div class="spinner"></div><div>Loading...</div></div>
+    <div id="scroller">
+        <div id="content">
+            <div id="loading"><div class="spinner"></div><div>Loading...</div></div>
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
@@ -294,6 +301,7 @@
         ];
 
         let currentPage = PAGES[0].file;
+        const scroller = document.getElementById('scroller');
 
         // ── Theme toggle ──
         const themeToggle = document.getElementById('theme-toggle');
@@ -317,7 +325,7 @@
             if (p.file === currentPage) btn.classList.add('active');
             btn.addEventListener('click', () => {
                 if (p.file === currentPage) {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    scroller.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                 }
                 loadPage(p.file);
@@ -342,8 +350,8 @@
 
         async function loadPage(file, opts = {}) {
             if (!opts.popstate && !opts.skipSave && currentPage) {
-                tabScrollY.set(currentPage, window.scrollY);
-                history.replaceState({ file: currentPage, scrollY: window.scrollY }, '', '#' + currentPage.replace('.md', ''));
+                tabScrollY.set(currentPage, scroller.scrollTop);
+                history.replaceState({ file: currentPage, scrollY: scroller.scrollTop }, '', '#' + currentPage.replace('.md', ''));
             }
             currentPage = file;
             nav.querySelectorAll('button').forEach(b => {
@@ -357,7 +365,7 @@
             const cached = pageCache.has(file);
             if (!cached) {
                 el.innerHTML = '<div id="loading"><div class="spinner"></div><div>Loading...</div></div>';
-                window.scrollTo(0, 0);
+                scroller.scrollTop = 0;
             }
 
             try {
@@ -450,7 +458,7 @@
                         e.preventDefault();
                         const href = a.getAttribute('href');
                         const [targetFile, targetId] = href.split('#');
-                        history.replaceState({ file: currentPage, scrollY: window.scrollY }, '', '#' + currentPage.replace('.md', ''));
+                        history.replaceState({ file: currentPage, scrollY: scroller.scrollTop }, '', '#' + currentPage.replace('.md', ''));
                         loadPage(targetFile, { skipSave: true }).then(() => {
                             setTimeout(() => {
                                 const target = document.getElementById(targetId);
@@ -484,7 +492,7 @@
 
                 // Restore tab scroll (skip for cross-link and popstate — they handle scroll themselves)
                 if (!opts.popstate && !opts.skipSave) {
-                    window.scrollTo(0, tabScrollY.get(file) || 0);
+                    scroller.scrollTop = tabScrollY.get(file) || 0;
                 }
             } catch (err) {
                 el.innerHTML = '<p style="color:red">Failed to load: ' + err.message + '</p>';
@@ -504,11 +512,11 @@
 
         // ── Scroll: hide theme toggle + throttled tab scroll save ──
         let scrollSaveTimer = null;
-        window.addEventListener('scroll', () => {
-            themeToggle.classList.toggle('hidden', window.scrollY > 30);
+        scroller.addEventListener('scroll', () => {
+            themeToggle.classList.toggle('hidden', scroller.scrollTop > 30);
             if (scrollSaveTimer) return;
             scrollSaveTimer = setTimeout(() => {
-                tabScrollY.set(currentPage, window.scrollY);
+                tabScrollY.set(currentPage, scroller.scrollTop);
                 scrollSaveTimer = null;
             }, 150);
         }, { passive: true });
@@ -516,19 +524,20 @@
         // ── Disable pinch/double-tap zoom ──
         // CSS touch-action handles static touch; JS covers inertial scroll phase
         // where touch-action is no longer evaluated by Safari
+        // Block pinch zoom on the scroll container (fires during inertial scroll unlike window-level)
         let lastTouchEnd = 0;
-        document.addEventListener('touchstart', e => {
+        scroller.addEventListener('touchstart', e => {
             if (e.touches.length > 1) e.preventDefault();
         }, { passive: false });
-        document.addEventListener('touchmove', e => {
+        scroller.addEventListener('touchmove', e => {
             if (e.touches.length > 1) e.preventDefault();
         }, { passive: false });
-        document.addEventListener('touchend', e => {
+        scroller.addEventListener('touchend', e => {
             const now = Date.now();
             if (now - lastTouchEnd < 300) e.preventDefault();
             lastTouchEnd = now;
         }, { passive: false });
-        // Safari proprietary gesture system
+        // Safari proprietary gesture system (keep on document — not scroll-related)
         document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
         document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 
@@ -536,7 +545,7 @@
             const state = e.state;
             if (state && state.file) {
                 loadPage(state.file, { popstate: true }).then(() => {
-                    setTimeout(() => window.scrollTo(0, state.scrollY || 0), 300);
+                    setTimeout(() => { scroller.scrollTop = state.scrollY || 0; }, 300);
                 });
             }
         });
