@@ -324,7 +324,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1817';
+        const APP_VERSION = '20260422-1819';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -649,7 +649,7 @@
         function showToast(msg) {
             toast.textContent = msg;
             toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), 3000);
+            setTimeout(() => toast.classList.remove('visible'), 5000);
         }
 
         function checkVersion() {
