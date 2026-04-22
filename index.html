@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2350';
+        const APP_VERSION = '20260422-2358';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1930,16 +1930,10 @@ onmessage = async ({ data }) => {
 
         function appendSmartSearchBtn(query) {
             if (localStorage.getItem('smartSearch') === 'off') return;
-            const wrap = document.createElement('div');
-            wrap.style.cssText = 'padding:12px 16px 4px;display:flex;justify-content:center';
-            const btn = document.createElement('button');
-            btn.style.cssText = 'padding:8px 18px;border-radius:20px;border:1.5px solid var(--link);background:transparent;color:var(--link);font-size:0.9em;cursor:pointer;font-family:inherit';
-            btn.textContent = semanticReady ? '🔍 Умный поиск' : semanticIndexing ? '🔍 Умный поиск (индексируется…)' : '🔍 Умный поиск';
-            btn.addEventListener('click', async () => {
-                await showSemanticResults(query, btn);
-            });
-            wrap.appendChild(btn);
-            searchResults.appendChild(wrap);
+            const el = document.createElement('div');
+            el.style.cssText = 'padding:10px 16px;font-size:0.8em;color:var(--text-muted)';
+            el.textContent = semanticIndexing ? '🔍 Индексируется поиск по смыслу…' : '🔍 Поиск по смыслу загружается…';
+            searchResults.appendChild(el);
         }
 
         // ── Pull-to-search gesture ──
