@@ -668,7 +668,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2155';
+        const APP_VERSION = '20260422-2156';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -907,7 +907,6 @@
                     + '<table style="margin-top:12px;width:100%"><tr><th>Версия</th><td>' + v + '</td></tr>'
                     + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>'
                     + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">' + (updateAvailable ? '🔄 Установить обновление' : 'Обновить приложение') + '</button>'
-                    + '<button id="clear-cache-btn" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:14px;cursor:pointer">Очистить кэш</button>'
                     + '</div>'
 
                     + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>';
@@ -935,11 +934,6 @@
                     await hardReload();
                 });
 
-                el.querySelector('#clear-cache-btn').addEventListener('click', async function() {
-                    this.textContent = 'Очищаю...';
-                    this.disabled = true;
-                    await hardReload();
-                });
                 requestAnimationFrame(() => {
                     scroller.scrollTop = tabScrollY.get(file) || 0;
                     updateStickyHeader();
