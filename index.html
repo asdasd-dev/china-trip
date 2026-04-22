@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0500';
+        const APP_VERSION = '20260423-0510';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1253,6 +1253,13 @@
                         let target = null;
                         if (candidates.length) {
                             target = candidates.reduce((best, b) => snippetScore(b) > snippetScore(best) ? b : best, candidates[0]);
+                        } else if (snippetWords) {
+                            // Нет блоков с словами запроса (напр. семантический поиск) — ищем по сниппету
+                            let bestScore = 0;
+                            for (const b of blocks) {
+                                const s = snippetScore(b);
+                                if (s > bestScore) { bestScore = s; target = b; }
+                            }
                         }
 
                         if (target) {
