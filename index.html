@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2300';
+        const APP_VERSION = '20260422-2308';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1533,9 +1533,12 @@
         }
 
         // ── Semantic Search ──
-        let semanticIndex = null;
-        let semanticReady = false;
-        let semanticLoading = false;
+        // Архитектура: воркер запускается при старте приложения, индексирует в фоне.
+        // К моменту первого поиска индекс уже готов (или почти готов).
+
+        let semanticIndex = [];
+        let semanticReady = false;   // индекс полностью построен
+        let semanticIndexing = false; // идёт фоновая индексация
 
         function cosineSim(a, b) {
             let dot = 0, na = 0, nb = 0;
@@ -1543,7 +1546,6 @@
             return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-8);
         }
 
-        // Крупные чанки (~500 символов) — меньше инференсов, быстрее индексирование
         function chunkText(text) {
             const chunks = [];
             for (const para of text.split(/\n\n+/)) {
@@ -1560,19 +1562,10 @@
             return chunks;
         }
 
-        // ── Web Worker для ONNX inference (не блокирует главный поток) ──
+        // ── Web Worker (ONNX inference off main thread) ──
         let semanticWorker = null;
-        let workerReady = false;
         let workerMsgId = 0;
         const workerCbs = new Map();
-
-        function updateSemanticToast(msg) {
-            if (toastTimer) clearTimeout(toastTimer);
-            toast.textContent = msg;
-            toast.classList.add('visible');
-            toast.classList.remove('clickable');
-            toast._onClick = null;
-        }
 
         function workerEmbed(text) {
             return new Promise((resolve, reject) => {
@@ -1582,17 +1575,12 @@
             });
         }
 
-        async function initSemanticSearch() {
-            if (semanticReady) return true;
-            if (semanticLoading) {
-                while (semanticLoading) await new Promise(r => setTimeout(r, 200));
-                return semanticReady;
-            }
-            semanticLoading = true;
+        // Запускается один раз при старте приложения
+        async function startBackgroundIndexing() {
+            if (semanticReady || semanticIndexing) return;
+            semanticIndexing = true;
             try {
-                updateSemanticToast('🔍 Загрузка модели поиска…');
-
-                // Воркер как blob — не нужен отдельный файл
+                // Создаём воркер как blob — никаких дополнительных файлов
                 const workerSrc = `
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2/dist/transformers.min.js';
 let pipe = null;
@@ -1613,146 +1601,95 @@ onmessage = async ({ data }) => {
 };`;
                 const blob = new Blob([workerSrc], { type: 'text/javascript' });
                 semanticWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
-
-                await new Promise((resolve, reject) => {
-                    semanticWorker.onmessage = ({ data }) => {
-                        if (data.type === 'ready') { resolve(); }
-                        else if (data.type === 'progress') {
-                            const p = data.p;
-                            if (p.status === 'progress' && p.progress != null)
-                                updateSemanticToast(`🔍 Загрузка модели: ${Math.round(p.progress)}%`);
-                            else if (p.status === 'initiate')
-                                updateSemanticToast(`🔍 Загрузка: ${p.file || ''}…`);
-                        }
-                        else if (data.type === 'error') { reject(new Error(data.msg)); }
-                        else if (data.type === 'emb') {
-                            const cb = workerCbs.get(data.id);
-                            if (cb) { workerCbs.delete(data.id); cb.resolve(data.emb); }
-                        }
-                    };
-                    semanticWorker.onerror = e => reject(e);
-                    semanticWorker.postMessage({ type: 'init' });
-                });
-
-                // После инициализации все embed-запросы идут через onmessage воркера
                 semanticWorker.onmessage = ({ data }) => {
                     if (data.type === 'emb') {
                         const cb = workerCbs.get(data.id);
                         if (cb) { workerCbs.delete(data.id); cb.resolve(data.emb); }
-                    } else if (data.type === 'error') {
+                    } else if (data.type === 'error' && data.id != null) {
                         const cb = workerCbs.get(data.id);
                         if (cb) { workerCbs.delete(data.id); cb.reject(new Error(data.msg)); }
                     }
                 };
+                semanticWorker.onerror = e => console.error('Semantic worker error:', e);
 
-                semanticIndex = [];
-                semanticReady = true;
-                semanticLoading = false;
-                return true;
-            } catch(e) {
-                console.error('Semantic search init failed:', e);
-                semanticLoading = false;
-                showToast('❌ Не удалось загрузить модель поиска', null, 4000);
-                return false;
-            }
-        }
-
-        // Стриминговый поиск: индексирует страницы по одной и сразу показывает результаты
-        async function streamSemanticSearch(query, resultsContainer) {
-            const qEmb = await workerEmbed(query);
-
-            let totalFound = 0;
-            const pages = PAGES.filter(p => p.file !== 'settings');
-
-            for (let pi = 0; pi < pages.length; pi++) {
-                const page = pages[pi];
-                updateSemanticToast(`🔍 ${page.label} (${pi + 1}/${pages.length})…`);
-
-                let raw = pageCache.get(page.file);
-                if (!raw) {
-                    try { const r = await fetch(`./${page.file}`); raw = await r.text(); pageCache.set(page.file, raw); }
-                    catch { continue; }
-                }
-                const clean = cleanMd(raw);
-                const chunks = chunkText(clean);
-                const pageItems = [];
-
-                for (const chunk of chunks) {
-                    const emb = await workerEmbed(chunk);
-                    const needle = chunk.slice(0, 40).toLowerCase();
-                    const pos = raw.toLowerCase().indexOf(needle);
-                    const breadcrumb = pos >= 0 ? getBreadcrumbAtPos(raw, pos) : '';
-                    const item = { page, chunk, breadcrumb, emb };
-                    semanticIndex.push(item);
-                    const score = cosineSim(qEmb, emb);
-                    if (score > 0.25) pageItems.push({ ...item, score });
-                }
-
-                if (!pageItems.length) continue;
-                pageItems.sort((a, b) => b.score - a.score);
-
-                // Добавляем результаты этой страницы сразу
-                const group = document.createElement('div');
-                group.className = 'search-page-group';
-                const label = document.createElement('div');
-                label.className = 'search-page-label';
-                label.textContent = page.label;
-                group.appendChild(label);
-
-                pageItems.slice(0, 2).forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'search-result';
-                    if (item.breadcrumb) {
-                        const bc = document.createElement('div');
-                        bc.className = 'search-breadcrumb';
-                        bc.textContent = item.breadcrumb;
-                        div.appendChild(bc);
-                    }
-                    const p = document.createElement('div');
-                    p.className = 'search-snippet';
-                    p.textContent = item.chunk.slice(0, 160) + (item.chunk.length > 160 ? '…' : '');
-                    div.appendChild(p);
-                    div.addEventListener('click', () => {
-                        closeSearch();
-                        loadPage(page.file, { searchQuery: item.chunk.split(/\s+/).slice(0, 4).join(' ') });
-                    });
-                    group.appendChild(div);
-                    totalFound++;
+                // Ждём инициализации модели (может занять время при первой загрузке)
+                await new Promise((resolve, reject) => {
+                    const orig = semanticWorker.onmessage;
+                    semanticWorker.onmessage = ({ data }) => {
+                        if (data.type === 'ready') { semanticWorker.onmessage = orig; resolve(); }
+                        else if (data.type === 'error' && data.id == null) reject(new Error(data.msg));
+                        else orig({ data });
+                    };
+                    semanticWorker.postMessage({ type: 'init' });
                 });
-                resultsContainer.appendChild(group);
-            }
 
-            return totalFound;
+                // Строим индекс по всем страницам
+                const pages = PAGES.filter(p => p.file !== 'settings');
+                for (const page of pages) {
+                    let raw = pageCache.get(page.file);
+                    if (!raw) {
+                        try { raw = await (await fetch(`./${page.file}`)).text(); pageCache.set(page.file, raw); }
+                        catch { continue; }
+                    }
+                    const chunks = chunkText(cleanMd(raw));
+                    // Все чанки страницы параллельно — воркер обрабатывает по очереди, но без лишних round-trip пауз
+                    const embs = await Promise.all(chunks.map(c => workerEmbed(c)));
+                    chunks.forEach((chunk, i) => {
+                        const pos = raw.toLowerCase().indexOf(chunk.slice(0, 40).toLowerCase());
+                        semanticIndex.push({ page, chunk, emb: embs[i], breadcrumb: pos >= 0 ? getBreadcrumbAtPos(raw, pos) : '' });
+                    });
+                }
+
+                semanticReady = true;
+                semanticIndexing = false;
+                // Тихое завершение — не спамим тостом если пользователь не просил поиск
+            } catch(e) {
+                console.error('Background indexing failed:', e);
+                semanticIndexing = false;
+            }
         }
 
-        async function performSemanticSearch(query) {
+        // Ждёт готовности индекса и показывает прогресс если пользователь уже нажал кнопку
+        async function waitForIndex(btn) {
+            if (semanticReady) return true;
+            if (!semanticIndexing && !semanticWorker) {
+                // Воркер ещё не запускался — запускаем сейчас
+                if (btn) { btn.disabled = true; btn.textContent = '🔍 Загрузка модели…'; }
+                startBackgroundIndexing();
+            } else if (btn) {
+                btn.disabled = true;
+                btn.textContent = '🔍 Индексируется…';
+            }
+            while (!semanticReady && (semanticIndexing || semanticWorker)) {
+                await new Promise(r => setTimeout(r, 300));
+            }
+            return semanticReady;
+        }
+
+        async function querySemanticIndex(query) {
             if (!semanticReady || !semanticIndex.length) return null;
             const qEmb = await workerEmbed(query);
-
             const scored = semanticIndex
                 .map(item => ({ ...item, score: cosineSim(qEmb, item.emb) }))
                 .filter(item => item.score > 0.25)
                 .sort((a, b) => b.score - a.score)
                 .slice(0, 6);
-
             if (!scored.length) return null;
 
             const frag = document.createDocumentFragment();
-            const seen = new Map();
+            const byPage = new Map();
             for (const item of scored) {
-                if (!seen.has(item.page.file)) seen.set(item.page.file, []);
-                seen.get(item.page.file).push(item);
+                if (!byPage.has(item.page.file)) byPage.set(item.page.file, []);
+                byPage.get(item.page.file).push(item);
             }
-
-            for (const [file, items] of seen) {
+            for (const [, items] of byPage) {
                 const page = items[0].page;
                 const group = document.createElement('div');
                 group.className = 'search-page-group';
-                const label = document.createElement('div');
-                label.className = 'search-page-label';
-                label.textContent = page.label;
-                group.appendChild(label);
-
+                const lbl = document.createElement('div');
+                lbl.className = 'search-page-label';
+                lbl.textContent = page.label;
+                group.appendChild(lbl);
                 items.slice(0, 2).forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'search-result';
@@ -1777,31 +1714,19 @@ onmessage = async ({ data }) => {
             return frag;
         }
 
-        async function showSemanticResults(query) {
+        async function showSemanticResults(query, btn) {
+            const ready = await waitForIndex(btn);
+            if (!ready) { showToast('❌ Умный поиск недоступен', null, 3000); return; }
+
+            const frag = await querySemanticIndex(query);
             searchResults.innerHTML = '';
             const hdr = document.createElement('div');
             hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
             hdr.textContent = 'По смыслу';
             searchResults.appendChild(hdr);
-
-            let total;
-            if (semanticIndex.length > 0) {
-                // Индекс уже готов — просто ищем
-                const semFrag = await performSemanticSearch(query);
-                if (semFrag) {
-                    searchResults.appendChild(semFrag);
-                    showToast('', null, 1); // скрываем тост
-                    total = 1;
-                } else {
-                    total = 0;
-                }
+            if (frag) {
+                searchResults.appendChild(frag);
             } else {
-                // Стриминг: индексируем и показываем по мере готовности
-                total = await streamSemanticSearch(query, searchResults);
-                showToast(total > 0 ? '✅ Умный поиск готов' : '🤷 Ничего не найдено по смыслу', null, 3000);
-            }
-
-            if (total === 0) {
                 searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🤷</div>Ничего не найдено</div>';
             }
         }
@@ -1902,19 +1827,13 @@ onmessage = async ({ data }) => {
         }
 
         function appendSmartSearchBtn(query) {
-            if (semanticLoading) return; // уже грузится
             const wrap = document.createElement('div');
             wrap.style.cssText = 'padding:12px 16px 4px;display:flex;justify-content:center';
             const btn = document.createElement('button');
             btn.style.cssText = 'padding:8px 18px;border-radius:20px;border:1.5px solid var(--link);background:transparent;color:var(--link);font-size:0.9em;cursor:pointer;font-family:inherit';
-            btn.textContent = semanticReady ? '🔍 Умный поиск' : '🔍 Умный поиск (загрузить модель)';
+            btn.textContent = semanticReady ? '🔍 Умный поиск' : semanticIndexing ? '🔍 Умный поиск (индексируется…)' : '🔍 Умный поиск';
             btn.addEventListener('click', async () => {
-                wrap.remove();
-                if (!semanticReady) {
-                    const ok = await initSemanticSearch();
-                    if (!ok) return;
-                }
-                await showSemanticResults(query);
+                await showSemanticResults(query, btn);
             });
             wrap.appendChild(btn);
             searchResults.appendChild(wrap);
@@ -2000,6 +1919,9 @@ onmessage = async ({ data }) => {
         const hash = location.hash.slice(1);
         const initial = PAGES.find(p => p.file.replace('.md', '') === hash);
         loadPage(initial ? initial.file : PAGES[0].file);
+
+        // Фоновая индексация: запускаем через 4с после старта чтобы не конкурировать с рендером
+        setTimeout(() => startBackgroundIndexing(), 4000);
     </script>
 </body>
 </html>
