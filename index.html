@@ -502,10 +502,23 @@
             window.visualViewport.addEventListener('scroll', updateNav);
         }
 
-        // ── Theme toggle: hide on scroll ──
+        // ── Scroll: hide theme toggle + throttled tab scroll save ──
+        let scrollSaveTimer = null;
         window.addEventListener('scroll', () => {
             themeToggle.classList.toggle('hidden', window.scrollY > 30);
+            if (scrollSaveTimer) return;
+            scrollSaveTimer = setTimeout(() => {
+                tabScrollY.set(currentPage, window.scrollY);
+                scrollSaveTimer = null;
+            }, 150);
         }, { passive: true });
+
+        // ── Disable pinch zoom (iOS Safari ignores viewport user-scalable=no) ──
+        document.addEventListener('touchmove', e => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
+        document.addEventListener('gesturestart', e => e.preventDefault());
+        document.addEventListener('gesturechange', e => e.preventDefault());
 
         window.addEventListener('popstate', e => {
             const state = e.state;
