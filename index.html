@@ -668,7 +668,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2145';
+        const APP_VERSION = '20260422-2152';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -907,6 +907,7 @@
                     + '<table style="margin-top:12px;width:100%"><tr><th>Версия</th><td>' + v + '</td></tr>'
                     + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>'
                     + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">' + (updateAvailable ? '🔄 Установить обновление' : 'Обновить приложение') + '</button>'
+                    + '<button id="clear-cache-btn" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:14px;cursor:pointer">Очистить кэш</button>'
                     + '</div>'
 
                     + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>';
@@ -931,18 +932,13 @@
                 el.querySelector('#update-btn').addEventListener('click', async function() {
                     this.textContent = 'Обновляю...';
                     this.disabled = true;
-                    try {
-                        // Снимаем регистрацию SW и очищаем кэши —
-                        // после reload страница грузится напрямую из сети (новая версия гарантирована)
-                        if ('serviceWorker' in navigator) {
-                            const reg = await navigator.serviceWorker.getRegistration();
-                            if (reg) await reg.unregister();
-                            const keys = await caches.keys();
-                            await Promise.all(keys.map(k => caches.delete(k)));
-                        }
-                    } finally {
-                        window.location.reload();
-                    }
+                    await hardReload();
+                });
+
+                el.querySelector('#clear-cache-btn').addEventListener('click', async function() {
+                    this.textContent = 'Очищаю...';
+                    this.disabled = true;
+                    await hardReload();
                 });
                 requestAnimationFrame(() => {
                     scroller.scrollTop = tabScrollY.get(file) || 0;
@@ -1505,7 +1501,7 @@
 
         const toast = document.getElementById('toast');
         let toastTimer = null;
-        function showToast(msg, onClick) {
+        function showToast(msg, onClick, duration) {
             toast.textContent = msg;
             toast.classList.add('visible');
             toast.classList.toggle('clickable', !!onClick);
@@ -1514,7 +1510,7 @@
             toastTimer = setTimeout(() => {
                 toast.classList.remove('visible', 'clickable');
                 toast._onClick = null;
-            }, 5000);
+            }, duration || 5000);
         }
         toast.addEventListener('click', () => {
             if (toast._onClick) {
@@ -1524,16 +1520,24 @@
             }
         });
 
+        async function hardReload() {
+            if ('serviceWorker' in navigator) {
+                const reg = await navigator.serviceWorker.getRegistration();
+                if (reg) await reg.unregister();
+                const keys = await caches.keys();
+                await Promise.all(keys.map(k => caches.delete(k)));
+            }
+            window.location.reload();
+        }
+
         function checkVersion() {
             fetch('./version.txt?t=' + Date.now(), { cache: 'no-store' })
                 .then(r => r.text())
                 .then(v => {
                     if (v.trim() !== APP_VERSION && !updateAvailable) {
                         updateAvailable = true;
-                        const settingsBtn = nav.querySelector('[data-file="settings"]');
-                        if (settingsBtn) settingsBtn.classList.add('has-update');
-                        if (currentPage === 'settings') loadPage('settings', { skipSave: true });
-                        showToast('🔔 Доступна новая версия', () => loadPage('settings'));
+                        showToast('🔔 Новая версия — обновляю...', null, 2500);
+                        setTimeout(hardReload, 2500);
                     }
                 })
                 .catch(() => {});
