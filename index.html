@@ -368,7 +368,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2025';
+        const APP_VERSION = '20260422-2038';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -633,8 +633,6 @@
                             const reg = await navigator.serviceWorker.getRegistration();
                             if (reg) await reg.update();
                         }
-                        const keys = await caches.keys();
-                        await Promise.all(keys.map(k => caches.delete(k)));
                     } finally {
                         window.location.reload();
                     }

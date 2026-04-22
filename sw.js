@@ -1,4 +1,4 @@
-const VERSION = '20260422-2025';
+const VERSION = '20260422-2038';
 const CACHE = 'china-trip-' + VERSION;
 
 const PRECACHE = [
@@ -36,13 +36,18 @@ self.addEventListener('fetch', e => {
     e.respondWith(
         caches.open(CACHE).then(cache =>
             cache.match(e.request).then(cached => {
-                // Фоновое обновление кэша
-                const fresh = fetch(e.request).then(r => {
+                // Всегда идём в сеть для обновления кэша в фоне
+                const networkFetch = fetch(e.request).then(r => {
                     if (r.ok) cache.put(e.request, r.clone());
                     return r;
-                }).catch(() => null);
-                // Отдаём кэш сразу, если есть — иначе ждём сеть
-                return cached || fresh;
+                });
+                if (cached) {
+                    // Есть кэш — отдаём сразу, сеть обновляет в фоне (не блокирует)
+                    networkFetch.catch(() => {});
+                    return cached;
+                }
+                // Нет кэша — ждём сеть (если упадёт, браузер получит нормальную сетевую ошибку)
+                return networkFetch;
             })
         )
     );
