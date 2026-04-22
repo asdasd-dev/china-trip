@@ -670,10 +670,11 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2/dist/transformers.min.js" async></script>
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2206';
+        const APP_VERSION = '20260422-2238';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -841,6 +842,13 @@
                 const y = v.slice(0,4), mo = v.slice(4,6), d = v.slice(6,8), h = v.slice(9,11), mi = v.slice(11,13);
                 const changelog = [
                     { date: '23.04.2026', items: [
+                        'Семантический поиск: умный поиск по смыслу с ML-моделью (работает офлайн, кэшируется)',
+                        'Хлебные крошки в результатах поиска: показывает раздел и подраздел',
+                        'Нечёткий поиск: находит слова с опечатками и похожие формы',
+                        'Подсветка найденного текста при переходе к результату',
+                        'Разговорник: карточки с транскрипцией и воспроизведением произношения',
+                        'Сегодня в маршруте: кнопка для быстрого перехода к текущему дню',
+                        'Контейнеры для фото с рамкой и нейтральным фоном',
                         'Поиск по всем страницам: pull-to-search и точный скролл к результату',
                     ]},
                     { date: '22.04.2026', items: [
@@ -1389,7 +1397,7 @@
         const RU_MONTHS = { 'янв':1,'фев':2,'мар':3,'апр':4,'май':5,'мая':5,'июн':6,'июл':7,'авг':8,'сен':9,'окт':10,'ноя':11,'дек':12 };
 
         function findTodayH2(h2s) {
-            const now = new Date('2026-05-15'); // TODO: убрать после теста
+            const now = new Date();
             const day = now.getDate();
             const month = now.getMonth() + 1; // 1-based
             const re = /(\d{1,2})\s+(янв|фев|мар|апр|май|мая|июн|июл|авг|сен|окт|ноя|дек)/i;
@@ -1525,7 +1533,174 @@
             return result;
         }
 
-        function performSearch(query) {
+        // ── Semantic Search ──
+        let semanticPipeline = null;
+        let semanticIndex = null;
+        let semanticReady = false;
+        let semanticLoading = false;
+
+        function cosineSim(a, b) {
+            let dot = 0, na = 0, nb = 0;
+            for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+            return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-8);
+        }
+
+        function chunkText(text) {
+            const chunks = [];
+            for (const para of text.split(/\n\n+/)) {
+                const t = para.trim();
+                if (t.length < 20) continue;
+                if (t.length <= 280) { chunks.push(t); continue; }
+                let buf = '';
+                for (const s of t.split(/(?<=[.!?])\s+/)) {
+                    if (buf.length + s.length > 280 && buf) { chunks.push(buf.trim()); buf = s; }
+                    else buf += (buf ? ' ' : '') + s;
+                }
+                if (buf.trim().length > 20) chunks.push(buf.trim());
+            }
+            return chunks;
+        }
+
+        async function ensureTransformers() {
+            if (window.transformers) return window.transformers;
+            for (let i = 0; i < 100; i++) {
+                await new Promise(r => setTimeout(r, 100));
+                if (window.transformers) return window.transformers;
+            }
+            return null;
+        }
+
+        function setSearchLoadingMsg(msg) {
+            const el = document.getElementById('search-loading-msg');
+            if (el) el.textContent = msg;
+        }
+
+        async function initSemanticSearch() {
+            if (semanticReady) return true;
+            if (semanticLoading) {
+                while (semanticLoading) await new Promise(r => setTimeout(r, 200));
+                return semanticReady;
+            }
+            semanticLoading = true;
+            try {
+                const tf = await ensureTransformers();
+                if (!tf) throw new Error('transformers.js not available');
+                const { pipeline } = tf;
+
+                semanticPipeline = await pipeline(
+                    'feature-extraction',
+                    'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
+                    {
+                        progress_callback: (p) => {
+                            if (p.status === 'progress' && p.progress != null) {
+                                setSearchLoadingMsg(`Загрузка модели: ${Math.round(p.progress)}%`);
+                            } else if (p.status === 'done') {
+                                setSearchLoadingMsg('Индексирование…');
+                            }
+                        }
+                    }
+                );
+
+                // Build index from all pages
+                semanticIndex = [];
+                const pages = PAGES.filter(p => p.file !== 'settings');
+                for (const page of pages) {
+                    let raw = pageCache.get(page.file);
+                    if (!raw) {
+                        try { const r = await fetch(`./${page.file}`); raw = await r.text(); pageCache.set(page.file, raw); }
+                        catch { continue; }
+                    }
+                    const clean = cleanMd(raw);
+                    const chunks = chunkText(clean);
+                    for (const chunk of chunks) {
+                        const out = await semanticPipeline(chunk, { pooling: 'mean', normalize: true });
+                        const emb = Array.from(out.data);
+                        const needle = chunk.slice(0, 40).toLowerCase();
+                        const pos = raw.toLowerCase().indexOf(needle);
+                        const breadcrumb = pos >= 0 ? getBreadcrumbAtPos(raw, pos) : '';
+                        semanticIndex.push({ page, chunk, breadcrumb, emb });
+                    }
+                    setSearchLoadingMsg(`Индексирование: ${page.label}…`);
+                }
+
+                semanticReady = true;
+                semanticLoading = false;
+                return true;
+            } catch(e) {
+                console.error('Semantic search init failed:', e);
+                semanticLoading = false;
+                return false;
+            }
+        }
+
+        async function performSemanticSearch(query) {
+            if (!semanticReady || !semanticPipeline) return null;
+            const out = await semanticPipeline(query, { pooling: 'mean', normalize: true });
+            const qEmb = Array.from(out.data);
+
+            const scored = semanticIndex
+                .map(item => ({ ...item, score: cosineSim(qEmb, item.emb) }))
+                .filter(item => item.score > 0.25)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 6);
+
+            if (!scored.length) return null;
+
+            const frag = document.createDocumentFragment();
+            const seen = new Map();
+            for (const item of scored) {
+                if (!seen.has(item.page.file)) seen.set(item.page.file, []);
+                seen.get(item.page.file).push(item);
+            }
+
+            for (const [file, items] of seen) {
+                const page = items[0].page;
+                const group = document.createElement('div');
+                group.className = 'search-page-group';
+                const label = document.createElement('div');
+                label.className = 'search-page-label';
+                label.textContent = page.label;
+                group.appendChild(label);
+
+                items.slice(0, 2).forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result';
+                    if (item.breadcrumb) {
+                        const bc = document.createElement('div');
+                        bc.className = 'search-breadcrumb';
+                        bc.textContent = item.breadcrumb;
+                        div.appendChild(bc);
+                    }
+                    const p = document.createElement('div');
+                    p.className = 'search-snippet';
+                    p.textContent = item.chunk.slice(0, 160) + (item.chunk.length > 160 ? '…' : '');
+                    div.appendChild(p);
+                    div.addEventListener('click', () => {
+                        closeSearch();
+                        loadPage(page.file, { searchQuery: item.chunk.split(/\s+/).slice(0, 4).join(' ') });
+                    });
+                    group.appendChild(div);
+                });
+                frag.appendChild(group);
+            }
+            return frag;
+        }
+
+        async function showSemanticResults(query) {
+            const semFrag = await performSemanticSearch(query);
+            searchResults.innerHTML = '';
+            if (semFrag) {
+                const hdr = document.createElement('div');
+                hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
+                hdr.textContent = 'По смыслу';
+                searchResults.appendChild(hdr);
+                searchResults.appendChild(semFrag);
+            } else {
+                searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🤷</div>Ничего не найдено</div>';
+            }
+        }
+
+        async function performSearch(query) {
             if (!query.trim()) {
                 searchResults.innerHTML = '';
                 searchResults.appendChild(searchHint);
@@ -1554,7 +1729,6 @@
                     const s = Math.max(0, m.index - 70);
                     const e = Math.min(clean.length, m.index + words[0].length + 70);
                     const snippet = (s > 0 ? '…' : '') + clean.slice(s, e) + (e < clean.length ? '…' : '');
-                    // Найти соответствующую позицию в raw (n-е вхождение)
                     let rawM, rawCount = 0;
                     firstReRaw.lastIndex = 0;
                     while ((rawM = firstReRaw.exec(raw)) !== null) {
@@ -1604,6 +1778,18 @@
                     hdr.textContent = 'Похожие результаты';
                     searchResults.appendChild(hdr);
                     searchResults.appendChild(fuzzyFrag);
+                } else if (query.trim().length >= 3) {
+                    if (semanticReady) {
+                        await showSemanticResults(query);
+                    } else {
+                        searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🔍</div><span id="search-loading-msg">Загрузка модели…</span></div>';
+                        const ok = await initSemanticSearch();
+                        if (ok) {
+                            await showSemanticResults(query);
+                        } else {
+                            searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🤷</div>Ничего не найдено</div>';
+                        }
+                    }
                 } else {
                     searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🤷</div>Ничего не найдено</div>';
                 }
@@ -1664,7 +1850,8 @@
                 const reg = await navigator.serviceWorker.getRegistration();
                 if (reg) await reg.unregister();
                 const keys = await caches.keys();
-                await Promise.all(keys.map(k => caches.delete(k)));
+                // china-trip-models не трогаем — модель скачана отдельно
+                await Promise.all(keys.filter(k => k !== 'china-trip-models').map(k => caches.delete(k)));
             }
             window.location.reload();
         }
