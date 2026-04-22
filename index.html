@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0330';
+        const APP_VERSION = '20260423-0345';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1444,8 +1444,13 @@
         }
 
         function performFuzzySearch(query) {
-            const words = query.trim().toLowerCase().split(/\s+/).filter(w => fuzzyThreshold(w.length) > 0);
-            if (!words.length) return null; // все слова слишком короткие для fuzzy
+            const allWords = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+            if (!allWords.length) return null;
+
+            // Короткие слова (≤3) — только точное вхождение, длинные — fuzzy
+            const shortWords = allWords.filter(w => fuzzyThreshold(w.length) === 0);
+            const longWords  = allWords.filter(w => fuzzyThreshold(w.length) > 0);
+            if (!longWords.length) return null; // нет слов для fuzzy — это зона точного поиска
 
             const frag = document.createDocumentFragment();
             let total = 0;
@@ -1454,16 +1459,19 @@
                 const raw = pageCache.get(page.file);
                 if (!raw) return;
                 const clean = cleanMd(raw);
+
+                // Короткие слова должны присутствовать буквально
+                if (shortWords.some(w => !new RegExp(escapeRe(w), 'i').test(clean))) return;
+
                 // Токенизируем текст страницы в уникальные слова
                 const textWords = [...new Set((clean.toLowerCase().match(/[а-яёa-z]+/gi) || []))];
 
-                // Для каждого слова запроса ищем fuzzy-совпадение
-                const fuzzyWords = words.map(w => {
-                    // Сначала проверяем точное совпадение
+                // Для длинных слов ищем fuzzy-совпадение
+                const fuzzyWords = longWords.map(w => {
                     if (new RegExp(escapeRe(w), 'i').test(clean)) return { word: w, dist: 0 };
                     return fuzzyFindWord(w, textWords);
                 });
-                if (fuzzyWords.some(fw => !fw)) return; // хоть одно слово не нашлось — пропускаем
+                if (fuzzyWords.some(fw => !fw)) return; // хоть одно длинное слово не нашлось — пропускаем
 
                 // Снипет вокруг первого fuzzy-слова
                 const firstWord = fuzzyWords[0].word;
@@ -1477,7 +1485,9 @@
                     const firstReRaw = new RegExp(escapeRe(firstWord), 'i');
                     const rawM = firstReRaw.exec(raw);
                     const breadcrumb = rawM ? getBreadcrumbAtPos(raw, rawM.index) : '';
-                    matches.push({ snippet, breadcrumb, fuzzyWords: fuzzyWords.map(fw => fw.word) });
+                    // подсвечиваем все слова: и длинные (fuzzy-совпадение), и короткие (точные)
+                    const highlightList = [...fuzzyWords.map(fw => fw.word), ...shortWords];
+                    matches.push({ snippet, breadcrumb, fuzzyWords: highlightList });
                 }
                 if (!matches.length) return;
 
