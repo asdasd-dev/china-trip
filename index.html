@@ -133,6 +133,16 @@
         }
         nav button.active .tab-icon { opacity: 1; }
         nav button.active .tab-dot { background: var(--nav-accent); }
+        nav button .tab-icon { position: relative; display: inline-block; }
+        nav button.has-update .tab-icon::after {
+            content: '';
+            position: absolute;
+            top: -1px; right: -3px;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #e74c3c;
+            border: 1.5px solid var(--nav-bg);
+        }
         #content {
             background: var(--content-bg);
             padding: 16px 14px;
@@ -295,7 +305,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1750';
+        const APP_VERSION = '20260422-1759';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -310,6 +320,7 @@
 
         let currentPage = PAGES[0].file;
         const scroller = document.getElementById('scroller');
+        let updateAvailable = false;
 
         // ── Theme toggle ──
         const themeToggle = document.getElementById('theme-toggle');
@@ -402,9 +413,10 @@
                     + '<button data-tab="changelog">Ченжлог</button>'
                     + '</div>'
                     + '<div id="settings-info">'
+                    + (updateAvailable ? '<div style="margin-top:12px;padding:12px 14px;border-radius:8px;background:#fff3cd;border:1px solid #ffc107;color:#856404;font-weight:600">🔔 Доступна новая версия</div>' : '')
                     + '<table style="margin-top:12px;width:100%"><tr><th>Версия</th><td>' + v + '</td></tr>'
                     + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>'
-                    + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">Обновить приложение</button>'
+                    + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">' + (updateAvailable ? '🔄 Установить обновление' : 'Обновить приложение') + '</button>'
                     + '</div>'
                     + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>';
                 el.querySelector('#settings-tabs').addEventListener('click', e => {
@@ -612,6 +624,12 @@
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js');
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                updateAvailable = true;
+                const settingsBtn = nav.querySelector('[data-file="settings"]');
+                if (settingsBtn) settingsBtn.classList.add('has-update');
+                if (currentPage === 'settings') loadPage('settings', { skipSave: true });
+            });
         }
 
         const hash = location.hash.slice(1);
