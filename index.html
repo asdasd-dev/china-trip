@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0020';
+        const APP_VERSION = '20260423-0030';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -921,6 +921,7 @@
                     + '<table style="margin-top:12px;width:100%"><tr><th>Версия</th><td>' + v + '</td></tr>'
                     + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>'
                     + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">' + (updateAvailable ? '🔄 Установить обновление' : 'Обновить приложение') + '</button>'
+                    + '<button id="clear-cache-btn" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-size:14px;cursor:pointer">Очистить кэш</button>'
                     + '<div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:8px;background:var(--toc-bg);border:1px solid var(--border)">'
                     + '<div><div style="font-weight:600;font-size:15px">Умный поиск</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">ML-модель, поиск по смыслу</div></div>'
                     + '<label style="position:relative;display:inline-block;width:44px;height:26px;flex-shrink:0">'
@@ -964,6 +965,25 @@
                     this.textContent = 'Обновляю...';
                     this.disabled = true;
                     await hardReload();
+                });
+
+                el.querySelector('#clear-cache-btn').addEventListener('click', async function() {
+                    this.textContent = 'Очищаю...';
+                    this.disabled = true;
+                    // Чистим SW кэш (кроме модели) + IDB с семантическим индексом
+                    if ('serviceWorker' in navigator) {
+                        const reg = await navigator.serviceWorker.getRegistration();
+                        if (reg) await reg.unregister();
+                        const keys = await caches.keys();
+                        await Promise.all(keys.filter(k => k !== 'china-trip-models').map(k => caches.delete(k)));
+                    }
+                    try {
+                        const db = await idbOpen();
+                        const tx = db.transaction(IDB_STORE, 'readwrite');
+                        tx.objectStore(IDB_STORE).clear();
+                        await new Promise(r => { tx.oncomplete = r; });
+                    } catch(e) { console.warn('IDB clear failed:', e); }
+                    window.location.reload();
                 });
 
                 requestAnimationFrame(() => {
