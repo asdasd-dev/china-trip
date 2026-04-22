@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0345';
+        const APP_VERSION = '20260423-0400';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1473,22 +1473,38 @@
                 });
                 if (fuzzyWords.some(fw => !fw)) return; // хоть одно длинное слово не нашлось — пропускаем
 
-                // Снипет вокруг первого fuzzy-слова
-                const firstWord = fuzzyWords[0].word;
-                const firstRe = new RegExp(escapeRe(firstWord), 'gi');
-                const matches = [];
-                let m;
-                while ((m = firstRe.exec(clean)) !== null && matches.length < 2) {
-                    const s = Math.max(0, m.index - 70);
-                    const e = Math.min(clean.length, m.index + firstWord.length + 70);
-                    const snippet = (s > 0 ? '…' : '') + clean.slice(s, e) + (e < clean.length ? '…' : '');
-                    const firstReRaw = new RegExp(escapeRe(firstWord), 'i');
-                    const rawM = firstReRaw.exec(raw);
-                    const breadcrumb = rawM ? getBreadcrumbAtPos(raw, rawM.index) : '';
-                    // подсвечиваем все слова: и длинные (fuzzy-совпадение), и короткие (точные)
-                    const highlightList = [...fuzzyWords.map(fw => fw.word), ...shortWords];
-                    matches.push({ snippet, breadcrumb, fuzzyWords: highlightList });
+                // Все слова которые должны быть в сниппете
+                const allMatchWords = [...fuzzyWords.map(fw => fw.word), ...shortWords];
+                const allMatchRes = allMatchWords.map(w => new RegExp(escapeRe(w), 'i'));
+
+                // Ищем окно ~250 символов где все слова присутствуют вместе
+                const WINDOW = 250;
+                const cleanLow = clean.toLowerCase();
+                let bestSnippetStart = -1;
+
+                // Перебираем позиции каждого слова как центр окна
+                for (const anchorRe of allMatchRes) {
+                    const re = new RegExp(anchorRe.source, 'gi');
+                    let m2;
+                    while ((m2 = re.exec(clean)) !== null) {
+                        const ws = Math.max(0, m2.index - 50);
+                        const we = Math.min(clean.length, ws + WINDOW);
+                        const window = cleanLow.slice(ws, we);
+                        if (allMatchRes.every(r => r.test(window))) {
+                            bestSnippetStart = ws;
+                            break;
+                        }
+                    }
+                    if (bestSnippetStart !== -1) break;
                 }
+                if (bestSnippetStart === -1) return; // слова не встречаются рядом — пропускаем
+
+                const snippetEnd = Math.min(clean.length, bestSnippetStart + WINDOW);
+                const snippet = (bestSnippetStart > 0 ? '…' : '') + clean.slice(bestSnippetStart, snippetEnd) + (snippetEnd < clean.length ? '…' : '');
+                const anchorRaw = new RegExp(escapeRe(allMatchWords[0]), 'i');
+                const rawM = anchorRaw.exec(raw);
+                const breadcrumb = rawM ? getBreadcrumbAtPos(raw, rawM.index) : '';
+                const matches = [{ snippet, breadcrumb, fuzzyWords: allMatchWords }];
                 if (!matches.length) return;
 
                 const group = document.createElement('div');
