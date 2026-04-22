@@ -589,7 +589,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2115';
+        const APP_VERSION = '20260422-2120';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1207,13 +1207,13 @@
         function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
         // ── "Сегодня в маршруте" ──
-        const RU_MONTHS = { 'янв':1,'фев':2,'мар':3,'апр':4,'май':5,'июн':6,'июл':7,'авг':8,'сен':9,'окт':10,'ноя':11,'дек':12 };
+        const RU_MONTHS = { 'янв':1,'фев':2,'мар':3,'апр':4,'май':5,'мая':5,'июн':6,'июл':7,'авг':8,'сен':9,'окт':10,'ноя':11,'дек':12 };
 
         function findTodayH2(h2s) {
             const now = new Date();
             const day = now.getDate();
             const month = now.getMonth() + 1; // 1-based
-            const re = /(\d{1,2})\s+(янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)/i;
+            const re = /(\d{1,2})\s+(янв|фев|мар|апр|май|мая|июн|июл|авг|сен|окт|ноя|дек)/i;
             return h2s.find(h2 => {
                 const m = re.exec(h2.textContent);
                 return m && parseInt(m[1]) === day && RU_MONTHS[m[2].toLowerCase()] === month;
