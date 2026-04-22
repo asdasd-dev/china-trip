@@ -310,6 +310,40 @@
             color: #000;
             border-color: transparent;
         }
+        .city-nav button.today-btn {
+            background: var(--link);
+            color: #fff;
+            border-color: transparent;
+            font-weight: 600;
+        }
+        html[data-theme="dark"] .city-nav button.today-btn {
+            color: #000;
+        }
+        #today-toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--text);
+            color: var(--bg);
+            border-radius: 12px;
+            padding: 10px 16px;
+            font-size: 0.9em;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s;
+            z-index: 200;
+            cursor: pointer;
+            max-width: calc(100vw - 40px);
+            white-space: normal;
+            text-align: center;
+        }
+        #today-toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+        }
         .toc-block {
             background: var(--toc-bg);
             border: 1px solid var(--border);
@@ -531,6 +565,7 @@
     <nav id="nav"></nav>
     <div id="sticky-header"></div>
     <div id="toast"></div>
+    <div id="today-toast"></div>
     <div id="pull-indicator">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <span>Поиск</span>
@@ -554,7 +589,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-1620';
+        const APP_VERSION = '20260422-2115';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -880,6 +915,24 @@
                     const cityNavH1s = h1s.slice(1); // пропускаем заголовок страницы
                     const cityNav = document.createElement('div');
                     cityNav.className = 'city-nav scrollable';
+
+                    // Кнопка "Сегодня" — только если текущий день есть в маршруте
+                    const todayH2 = findTodayH2(h2s);
+                    if (todayH2) {
+                        const scrollToToday = () => {
+                            const elTop = todayH2.getBoundingClientRect().top
+                                - scroller.getBoundingClientRect().top
+                                + scroller.scrollTop;
+                            scroller.scrollTop = Math.max(0, elTop - 80);
+                        };
+                        const todayBtn = document.createElement('button');
+                        todayBtn.textContent = '📍 Сегодня';
+                        todayBtn.className = 'today-btn';
+                        todayBtn.addEventListener('click', scrollToToday);
+                        cityNav.appendChild(todayBtn);
+                        showTodayToast(todayH2, scrollToToday);
+                    }
+
                     cityNavH1s.forEach(h1 => {
                         const btn = document.createElement('button');
                         btn.textContent = h1.textContent.split('(')[0].trim();
@@ -1152,6 +1205,38 @@
         }
 
         function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+        // ── "Сегодня в маршруте" ──
+        const RU_MONTHS = { 'янв':1,'фев':2,'мар':3,'апр':4,'май':5,'июн':6,'июл':7,'авг':8,'сен':9,'окт':10,'ноя':11,'дек':12 };
+
+        function findTodayH2(h2s) {
+            const now = new Date();
+            const day = now.getDate();
+            const month = now.getMonth() + 1; // 1-based
+            const re = /(\d{1,2})\s+(янв|фев|мар|апр|май|июн|июл|авг|сен|окт|ноя|дек)/i;
+            return h2s.find(h2 => {
+                const m = re.exec(h2.textContent);
+                return m && parseInt(m[1]) === day && RU_MONTHS[m[2].toLowerCase()] === month;
+            }) || null;
+        }
+
+        const todayToastEl = document.getElementById('today-toast');
+        let todayToastTimer = null;
+
+        function showTodayToast(h2, scrollFn) {
+            if (sessionStorage.getItem('todayToastShown')) return;
+            sessionStorage.setItem('todayToastShown', '1');
+            const title = h2.textContent.replace(/^[А-ЯЁа-яё\d]+:\s*/, '').trim(); // убираем "Ш1: "
+            todayToastEl.textContent = '📍 Сегодня: ' + title;
+            todayToastEl.classList.add('visible');
+            todayToastEl.onclick = () => { hideTodayToast(); scrollFn(); };
+            todayToastTimer = setTimeout(hideTodayToast, 5000);
+        }
+
+        function hideTodayToast() {
+            todayToastEl.classList.remove('visible');
+            clearTimeout(todayToastTimer);
+        }
 
         function highlightWords(text, words) {
             // Подсвечиваем каждое слово отдельно (длинные — первыми, чтобы не перебивать)
