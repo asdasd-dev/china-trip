@@ -788,7 +788,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '3.7';
+        const APP_VERSION = '3.8';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -955,6 +955,7 @@
 
             if (file === 'translate') {
                 el.classList.add('translate-mode');
+                scroller.style.overflow = 'hidden';
                 let translateTab = 'phrases';
                 const renderTranslate = async () => {
                     const tabBar = `<div style="display:flex;gap:8px;padding:10px 10px 8px;flex-shrink:0">
@@ -991,7 +992,7 @@
             }
             el.classList.remove('translate-mode');
             el.style.display = '';
-            el.classList.remove('translate-mode');
+            scroller.style.overflow = '';
 
             if (file === 'settings') {
                 const v = APP_VERSION;
