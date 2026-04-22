@@ -668,7 +668,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2139';
+        const APP_VERSION = '20260422-2145';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1350,19 +1350,6 @@
             }
         }
 
-        // Иероглифы и пиньинь часто смешаны в одной ячейке вида "停这里 tíng zhè lǐ"
-        // или разделены по колонкам. Разбиваем.
-        function splitZhPinyin(zhCell, maybePin) {
-            // Если отдельная колонка пиньинь передана — используем её
-            if (maybePin && /[a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/i.test(maybePin)) {
-                return { zh: zhCell.trim(), pinyin: maybePin.trim() };
-            }
-            // Иначе пробуем вытащить пиньинь из конца строки
-            const m = zhCell.match(/^([\u4e00-\u9fff\uff01-\uffee，。！？、\s]+)\s+(.+)$/);
-            if (m) return { zh: m[1].trim(), pinyin: m[2].trim() };
-            return { zh: zhCell.trim(), pinyin: '' };
-        }
-
         function transformPhrasebook(el) {
             // Найти h2 "Разговорник"
             const h2s = Array.from(el.querySelectorAll('h2'));
@@ -1381,12 +1368,11 @@
                         const cells = Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim());
                         if (cells.length < 2) return;
 
+                        // Формат: Russian | Chinese | Pinyin | When
                         const ru = cells[0];
-                        const { zh, pinyin: autoPin } = splitZhPinyin(cells[1], cells[2]);
-                        // Если cells[2] — это пиньинь, то when = cells[3], иначе cells[2]
-                        const isPinCol = cells[2] && /[a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/i.test(cells[2]) && !/[а-яё]/i.test(cells[2]);
-                        const when = isPinCol ? cells[3] : cells[2];
-                        const pinyin = isPinCol ? cells[2] : autoPin;
+                        const zh = cells[1];
+                        const pinyin = cells[2] || '';
+                        const when = (cells[3] && cells[3] !== '—') ? cells[3] : '';
 
                         const card = document.createElement('div');
                         card.className = 'phrase-card';
