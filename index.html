@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2313';
+        const APP_VERSION = '20260422-2328';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1618,26 +1618,7 @@
             } catch(e) { console.warn('idbSave failed:', e); }
         }
 
-        async function startBackgroundIndexing() {
-            if (semanticReady || semanticIndexing) return;
-            semanticIndexing = true;
-            try {
-                // Пробуем загрузить готовый индекс из IndexedDB
-                const cached = await idbLoad();
-                if (cached) {
-                    // Восстанавливаем: page хранили как file, восстанавливаем ссылку на объект
-                    semanticIndex = cached.map(item => ({
-                        ...item,
-                        page: PAGES.find(p => p.file === item.pageFile),
-                    })).filter(item => item.page);
-                    semanticReady = true;
-                    semanticIndexing = false;
-                    return;
-                }
-
-                // Кэша нет — строим индекс и сохраняем
-                showToast('🔍 Подготовка умного поиска…', null, 2500);
-                const workerSrc = `
+        const WORKER_SRC = `
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2/dist/transformers.min.js';
 let pipe = null;
 onmessage = async ({ data }) => {
@@ -1655,28 +1636,53 @@ onmessage = async ({ data }) => {
         } catch(e) { postMessage({ type: 'error', id: data.id, msg: e.message }); }
     }
 };`;
-                const blob = new Blob([workerSrc], { type: 'text/javascript' });
-                semanticWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
-                semanticWorker.onmessage = ({ data }) => {
-                    if (data.type === 'emb') {
-                        const cb = workerCbs.get(data.id);
-                        if (cb) { workerCbs.delete(data.id); cb.resolve(data.emb); }
-                    } else if (data.type === 'error' && data.id != null) {
-                        const cb = workerCbs.get(data.id);
-                        if (cb) { workerCbs.delete(data.id); cb.reject(new Error(data.msg)); }
-                    }
-                };
-                semanticWorker.onerror = e => console.error('Semantic worker error:', e);
 
-                await new Promise((resolve, reject) => {
-                    const orig = semanticWorker.onmessage;
-                    semanticWorker.onmessage = ({ data }) => {
-                        if (data.type === 'ready') { semanticWorker.onmessage = orig; resolve(); }
-                        else if (data.type === 'error' && data.id == null) reject(new Error(data.msg));
-                        else orig({ data });
-                    };
-                    semanticWorker.postMessage({ type: 'init' });
-                });
+        // Создаёт и инициализирует воркер, возвращает Promise
+        function createWorker() {
+            const blob = new Blob([WORKER_SRC], { type: 'text/javascript' });
+            semanticWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
+            semanticWorker.onmessage = ({ data }) => {
+                if (data.type === 'emb') {
+                    const cb = workerCbs.get(data.id);
+                    if (cb) { workerCbs.delete(data.id); cb.resolve(data.emb); }
+                } else if (data.type === 'error' && data.id != null) {
+                    const cb = workerCbs.get(data.id);
+                    if (cb) { workerCbs.delete(data.id); cb.reject(new Error(data.msg)); }
+                }
+            };
+            semanticWorker.onerror = e => console.error('Semantic worker error:', e);
+            return new Promise((resolve, reject) => {
+                const orig = semanticWorker.onmessage;
+                semanticWorker.onmessage = ({ data }) => {
+                    if (data.type === 'ready') { semanticWorker.onmessage = orig; resolve(); }
+                    else if (data.type === 'error' && data.id == null) reject(new Error(data.msg));
+                    else orig({ data });
+                };
+                semanticWorker.postMessage({ type: 'init' });
+            });
+        }
+
+        async function startBackgroundIndexing() {
+            if (semanticReady || semanticIndexing) return;
+            semanticIndexing = true;
+            try {
+                // Пробуем загрузить готовый индекс из IndexedDB
+                const cached = await idbLoad();
+                if (cached) {
+                    semanticIndex = cached.map(item => ({
+                        ...item,
+                        page: PAGES.find(p => p.file === item.pageFile),
+                    })).filter(item => item.page);
+                    semanticReady = true;
+                    semanticIndexing = false;
+                    // Воркер нужен для эмбеддинга запроса — запускаем в фоне
+                    createWorker().catch(e => console.error('Worker init failed:', e));
+                    return;
+                }
+
+                // Кэша нет — строим индекс с нуля
+                showToast('🔍 Подготовка умного поиска…', null, 2500);
+                await createWorker();
 
                 const pages = PAGES.filter(p => p.file !== 'settings');
                 for (const page of pages) {
@@ -1693,9 +1699,7 @@ onmessage = async ({ data }) => {
                     });
                 }
 
-                // Сохраняем в IDB (page → pageFile чтобы не хранить циклические ссылки)
                 await idbSave(semanticIndex.map(item => ({ ...item, page: undefined, pageFile: item.page.file })));
-
                 semanticReady = true;
                 semanticIndexing = false;
                 showToast('✅ Умный поиск готов', null, 2500);
