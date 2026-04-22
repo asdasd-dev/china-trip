@@ -423,7 +423,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0010';
+        const APP_VERSION = '20260423-0018';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -696,8 +696,10 @@
                         window.location.reload();
                     }
                 });
-                scroller.scrollTop = tabScrollY.get(file) || 0;
-                updateStickyHeader();
+                requestAnimationFrame(() => {
+                    scroller.scrollTop = tabScrollY.get(file) || 0;
+                    updateStickyHeader();
+                });
                 return;
             }
 
@@ -831,9 +833,13 @@
                 });
 
                 if (!opts.skipSave) {
-                    scroller.scrollTop = tabScrollY.get(file) || 0;
+                    requestAnimationFrame(() => {
+                        scroller.scrollTop = tabScrollY.get(file) || 0;
+                        updateStickyHeader();
+                    });
+                } else {
+                    updateStickyHeader();
                 }
-                updateStickyHeader();
             } catch (err) {
                 el.innerHTML = '<p style="color:red">Failed to load: ' + err.message + '</p>';
             }
