@@ -544,7 +544,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-1600';
+        const APP_VERSION = '20260423-1610';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -961,18 +961,19 @@
 
                 if (opts.searchQuery) {
                     scroller.scrollTop = 0;
-                    const re = new RegExp(escapeRe(opts.searchQuery), 'i');
+                    const qWords = opts.searchQuery.trim().split(/\s+/).filter(Boolean);
+                    const qWordRes = qWords.map(w => new RegExp(escapeRe(w), 'i'));
                     // aspect-ratio: 4/3 резервирует место под картинки — layout стабильный сразу
                     requestAnimationFrame(() => {
                         const blocks = el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote');
-                        for (const b of blocks) {
-                            if (re.test(b.textContent)) {
-                                const elTop = b.getBoundingClientRect().top
-                                    - scroller.getBoundingClientRect().top
-                                    + scroller.scrollTop;
-                                scroller.scrollTop = Math.max(0, elTop - 80);
-                                break;
-                            }
+                        // Сначала ищем блок где все слова есть, потом — где хоть одно
+                        const target = Array.from(blocks).find(b => qWordRes.every(re => re.test(b.textContent)))
+                            || Array.from(blocks).find(b => qWordRes.some(re => re.test(b.textContent)));
+                        if (target) {
+                            const elTop = target.getBoundingClientRect().top
+                                - scroller.getBoundingClientRect().top
+                                + scroller.scrollTop;
+                            scroller.scrollTop = Math.max(0, elTop - 80);
                         }
                         updateStickyHeader();
                     });
@@ -1140,13 +1141,23 @@
 
         function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
+        function highlightWords(text, words) {
+            // Подсвечиваем каждое слово отдельно (длинные — первыми, чтобы не перебивать)
+            let result = text;
+            words.slice().sort((a, b) => b.length - a.length).forEach(w => {
+                result = result.replace(new RegExp(escapeRe(w), 'gi'), '<mark>$&</mark>');
+            });
+            return result;
+        }
+
         function performSearch(query) {
-            if (!query) {
+            if (!query.trim()) {
                 searchResults.innerHTML = '';
                 searchResults.appendChild(searchHint);
                 return;
             }
-            const re = new RegExp(escapeRe(query), 'gi');
+            const words = query.trim().split(/\s+/).filter(Boolean);
+            const wordRes = words.map(w => new RegExp(escapeRe(w), 'gi'));
             const frag = document.createDocumentFragment();
             let total = 0;
 
@@ -1154,14 +1165,20 @@
                 const raw = pageCache.get(page.file);
                 if (!raw) return;
                 const clean = cleanMd(raw);
+
+                // Все слова должны присутствовать в тексте
+                const allPresent = wordRes.every(re => { re.lastIndex = 0; return re.test(clean); });
+                if (!allPresent) return;
+
+                // Снипеты вокруг вхождений первого слова
                 const matches = [];
+                const firstRe = new RegExp(escapeRe(words[0]), 'gi');
                 let m;
-                re.lastIndex = 0;
-                while ((m = re.exec(clean)) !== null && matches.length < 3) {
+                while ((m = firstRe.exec(clean)) !== null && matches.length < 3) {
                     const s = Math.max(0, m.index - 70);
-                    const e = Math.min(clean.length, m.index + query.length + 70);
+                    const e = Math.min(clean.length, m.index + words[0].length + 70);
                     const snippet = (s > 0 ? '…' : '') + clean.slice(s, e) + (e < clean.length ? '…' : '');
-                    matches.push({ snippet, matchIdx: m.index - s + (s > 0 ? 1 : 0) });
+                    matches.push({ snippet });
                 }
                 if (!matches.length) return;
 
@@ -1177,7 +1194,7 @@
                     div.className = 'search-result';
                     const p = document.createElement('div');
                     p.className = 'search-snippet';
-                    p.innerHTML = snippet.replace(new RegExp(escapeRe(query), 'gi'), '<mark>$&</mark>');
+                    p.innerHTML = highlightWords(snippet, words);
                     div.appendChild(p);
                     div.addEventListener('click', () => {
                         closeSearch();
