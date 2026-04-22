@@ -145,7 +145,7 @@
         h1 { border-bottom: 2px solid var(--h-border); padding-bottom: 10px; font-size: 1.5em; }
         h2 { margin-top: 28px; border-bottom: 1px solid var(--h-border); padding-bottom: 6px; font-size: 1.25em; }
         h3 { margin-top: 20px; font-size: 1.1em; }
-        table { border-collapse: collapse; width: 100%; margin: 12px 0; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { border-collapse: collapse; width: 100%; min-width: 100%; margin: 12px 0; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; font-size: 13px; }
         td.num { white-space: nowrap; text-align: right; }
         th { background: var(--th-bg); }
@@ -276,7 +276,7 @@
             h2 { font-size: 1.5em; }
             h3 { font-size: 1.17em; }
             th, td { padding: 8px 12px; white-space: normal; font-size: 14px; }
-            table { display: table; }
+            table { display: table; width: 100%; }
             #theme-toggle { top: 16px; right: 24px; }
         }
     </style>
@@ -293,7 +293,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1742';
+        const APP_VERSION = '20260422-1747';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -400,7 +400,7 @@
                     + '<button data-tab="changelog">Ченжлог</button>'
                     + '</div>'
                     + '<div id="settings-info">'
-                    + '<table style="margin-top:12px"><tr><th>Версия</th><td>' + v + '</td></tr>'
+                    + '<table style="margin-top:12px;width:100%"><tr><th>Версия</th><td>' + v + '</td></tr>'
                     + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>'
                     + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">Обновить приложение</button>'
                     + '</div>'
