@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0300';
+        const APP_VERSION = '20260423-0310';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -955,9 +955,9 @@
                     + '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">'
                     + '<div><div style="font-weight:600;font-size:15px;display:flex;align-items:center;gap:6px">Умный поиск<button id="smart-search-info-btn" style="width:18px;height:18px;border-radius:50%;border:1.5px solid var(--text-muted);background:transparent;color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;padding:0;line-height:1;flex-shrink:0">i</button></div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">ML-модель, поиск по смыслу</div></div>'
                     + '<label style="position:relative;display:inline-block;width:44px;height:26px;flex-shrink:0">'
-                    + '<input type="checkbox" id="smart-search-toggle" style="opacity:0;width:0;height:0" ' + (localStorage.getItem('smartSearch') !== 'off' ? 'checked' : '') + '>'
-                    + '<span id="smart-search-thumb" style="position:absolute;inset:0;border-radius:13px;background:' + (localStorage.getItem('smartSearch') !== 'off' ? 'var(--link)' : 'var(--toggle-bg)') + ';transition:.2s;cursor:pointer"></span>'
-                    + '<span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;transform:' + (localStorage.getItem('smartSearch') !== 'off' ? 'translateX(18px)' : 'translateX(0)') + ';pointer-events:none"></span>'
+                    + '<input type="checkbox" id="smart-search-toggle" style="opacity:0;width:0;height:0" ' + (localStorage.getItem('smartSearch') === 'on' ? 'checked' : '') + '>'
+                    + '<span id="smart-search-thumb" style="position:absolute;inset:0;border-radius:13px;background:' + (localStorage.getItem('smartSearch') === 'on' ? 'var(--link)' : 'var(--toggle-bg)') + ';transition:.2s;cursor:pointer"></span>'
+                    + '<span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;transform:' + (localStorage.getItem('smartSearch') === 'on' ? 'translateX(18px)' : 'translateX(0)') + ';pointer-events:none"></span>'
                     + '</label>'
                     + '</div>'
                     + '<div style="border-top:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
@@ -998,8 +998,9 @@
                         + '<p style="margin:0 0 12px">Работает <strong>офлайн</strong> — ML-модель (~50 МБ) скачивается один раз и кэшируется. В Китае интернет не нужен.</p>'
                         + '<p style="margin:0 0 4px"><strong>Как использовать:</strong></p>'
                         + '<ol style="margin:0;padding-left:20px;line-height:1.8">'
-                        + '<li>Нажмите «Запустить индексацию» — это займёт минуту при первом запуске</li>'
-                        + '<li>После завершения результаты по смыслу появляются автоматически под обычными</li>'
+                        + '<li>Включите тогл «Умный поиск» здесь в настройках</li>'
+                        + '<li>Нажмите «Запустить индексацию» — займёт минуту при первом запуске</li>'
+                        + '<li>После завершения результаты по смыслу появятся автоматически под обычными</li>'
                         + '<li>Индекс сохраняется и загружается при следующих запусках</li>'
                         + '</ol>'
                     );
@@ -1812,7 +1813,7 @@ onmessage = async ({ data }) => {
 
         async function startBackgroundIndexing() {
             if (semanticReady || semanticIndexing) return;
-            if (localStorage.getItem('smartSearch') === 'off') return;
+            if (localStorage.getItem('smartSearch') !== 'on') return;
             semanticIndexing = true;
             try {
                 // Пробуем загрузить готовый индекс из IndexedDB
@@ -1937,7 +1938,7 @@ onmessage = async ({ data }) => {
 
         // Добавляет блок "По смыслу" в конец searchResults
         async function appendSemanticResults(query, container) {
-            if (localStorage.getItem('smartSearch') === 'off') return;
+            if (localStorage.getItem('smartSearch') !== 'on') return;
             if (query.trim().length < 3) return;
 
             if (!semanticReady) {
@@ -2073,7 +2074,7 @@ onmessage = async ({ data }) => {
         }
 
         function appendSmartSearchBtn(query) {
-            if (localStorage.getItem('smartSearch') === 'off') return;
+            if (localStorage.getItem('smartSearch') !== 'on') return;
             if (!semanticIndexing) return; // нет активной индексации — ничего не показываем
             const el = document.createElement('div');
             el.dataset.semanticPending = '1';
@@ -2193,7 +2194,7 @@ onmessage = async ({ data }) => {
         // При старте тихо восстанавливаем индекс из IDB (если есть)
         // Полная индексация — только по кнопке в настройках
         async function tryRestoreFromIDB() {
-            if (localStorage.getItem('smartSearch') === 'off') return;
+            if (localStorage.getItem('smartSearch') !== 'on') return;
             const cached = await idbLoad();
             if (!cached) return;
             semanticIndex = cached.map(item => ({
