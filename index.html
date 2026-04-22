@@ -414,7 +414,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2148';
+        const APP_VERSION = '20260422-2202';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -675,11 +675,25 @@
                     this.textContent = 'Обновляю...';
                     this.disabled = true;
                     try {
-                        if ('serviceWorker' in navigator) {
-                            const reg = await navigator.serviceWorker.getRegistration();
-                            if (reg) await reg.update();
-                        }
-                    } finally {
+                        if (!('serviceWorker' in navigator)) { window.location.reload(); return; }
+                        const reg = await navigator.serviceWorker.getRegistration();
+                        if (!reg) { window.location.reload(); return; }
+
+                        // Слушаем ПЕРЕД update() — иначе можем пропустить событие
+                        const controlled = new Promise(resolve => {
+                            navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+                            setTimeout(resolve, 10000); // fallback на случай зависания
+                        });
+
+                        await reg.update();
+
+                        // Нет нового SW — просто перезагружаем
+                        if (!reg.installing && !reg.waiting) { window.location.reload(); return; }
+
+                        // Ждём пока новый SW активируется и возьмёт контроль, затем перезагружаем
+                        await controlled;
+                        window.location.reload();
+                    } catch (e) {
                         window.location.reload();
                     }
                 });
