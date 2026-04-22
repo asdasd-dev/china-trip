@@ -305,7 +305,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1800';
+        const APP_VERSION = '20260422-1802';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -623,7 +623,11 @@
         document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') reg.update();
+                });
+            });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 updateAvailable = true;
                 const settingsBtn = nav.querySelector('[data-file="settings"]');
