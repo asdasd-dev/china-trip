@@ -700,7 +700,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0200';
+        const APP_VERSION = '20260423-0210';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -964,6 +964,7 @@
                     + '<button id="semantic-index-btn" style="padding:6px 14px;border-radius:6px;border:1.5px solid var(--link);background:transparent;color:var(--link);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0" ' + (semanticIndexing ? 'disabled' : '') + '>' + getSemanticBtnText() + '</button>'
                     + '</div>'
                     + '</div>'
+                    + '</div>' // закрываем settings-info
 
                     + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>'
                     + '<div id="settings-console" style="display:none"><div id="console-log" style="font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;padding:8px 0;min-height:200px"></div></div>';
