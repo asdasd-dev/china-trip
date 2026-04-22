@@ -224,7 +224,7 @@
         blockquote { border-left: 4px solid var(--blockquote-border); margin: 12px 0; padding: 4px 12px; color: var(--blockquote-text); }
         a { color: var(--link); text-decoration: none; }
         a:hover { text-decoration: underline; }
-        img { max-width: 100%; width: 100%; height: auto; border-radius: 8px; margin: 12px 0; }
+        img { max-width: 100%; width: 100%; aspect-ratio: 4/3; object-fit: contain; border-radius: 8px; margin: 12px 0; }
         ul, ol { padding-left: 20px; }
         li { margin: 4px 0; }
         .task-list-item {
@@ -542,7 +542,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-1510';
+        const APP_VERSION = '20260423-1520';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -850,6 +850,9 @@
 
                 el.innerHTML = html;
 
+                // Ленивая подгрузка картинок — layout уже стабильный (aspect-ratio фиксирует высоту)
+                el.querySelectorAll('img').forEach(img => { img.loading = 'lazy'; });
+
                 const h1s = Array.from(el.querySelectorAll('h1'));
                 const h2s = Array.from(el.querySelectorAll('h2'));
 
@@ -957,7 +960,8 @@
                 if (opts.searchQuery) {
                     scroller.scrollTop = 0;
                     const re = new RegExp(escapeRe(opts.searchQuery), 'i');
-                    const scrollToMatch = () => {
+                    // aspect-ratio: 4/3 резервирует место под картинки — layout стабильный сразу
+                    requestAnimationFrame(() => {
                         const blocks = el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote');
                         for (const b of blocks) {
                             if (re.test(b.textContent)) {
@@ -968,18 +972,8 @@
                                 break;
                             }
                         }
-                    };
-                    // Ждём загрузки всех картинок страницы — иначе позиции элементов
-                    // ниже незагруженных изображений будут неверными
-                    const imgs = Array.from(el.querySelectorAll('img'));
-                    const ready = imgs.length
-                        ? Promise.all(imgs.map(img => img.complete
-                            ? Promise.resolve()
-                            : new Promise(r => { img.onload = r; img.onerror = r; })))
-                        : Promise.resolve();
-                    ready.then(() => { scrollToMatch(); updateStickyHeader(); });
-                    // Промежуточный скролл без ожидания — чтобы не висеть наверху
-                    requestAnimationFrame(() => { scrollToMatch(); updateStickyHeader(); });
+                        updateStickyHeader();
+                    });
                 } else if (!opts.skipSave) {
                     requestAnimationFrame(() => {
                         scroller.scrollTop = tabScrollY.get(file) || 0;
