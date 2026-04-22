@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0100';
+        const APP_VERSION = '20260423-0110';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -2021,10 +2021,11 @@ onmessage = async ({ data }) => {
 
         function appendSmartSearchBtn(query) {
             if (localStorage.getItem('smartSearch') === 'off') return;
+            if (!semanticIndexing) return; // нет активной индексации — ничего не показываем
             const el = document.createElement('div');
             el.dataset.semanticPending = '1';
             el.style.cssText = 'padding:10px 16px;font-size:0.8em;color:var(--text-muted)';
-            el.textContent = semanticIndexing ? '🔍 Индексируется поиск по смыслу…' : '🔍 Поиск по смыслу загружается…';
+            el.textContent = '🔍 Индексируется поиск по смыслу…';
             searchResults.appendChild(el);
         }
 
