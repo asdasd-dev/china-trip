@@ -293,7 +293,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1739';
+        const APP_VERSION = '20260422-1742';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -402,6 +402,7 @@
                     + '<div id="settings-info">'
                     + '<table style="margin-top:12px"><tr><th>Версия</th><td>' + v + '</td></tr>'
                     + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>'
+                    + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">Обновить приложение</button>'
                     + '</div>'
                     + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>';
                 el.querySelector('#settings-tabs').addEventListener('click', e => {
@@ -410,6 +411,20 @@
                     el.querySelectorAll('#settings-tabs button').forEach(b => b.classList.toggle('active', b === btn));
                     el.querySelector('#settings-info').style.display = btn.dataset.tab === 'info' ? '' : 'none';
                     el.querySelector('#settings-changelog').style.display = btn.dataset.tab === 'changelog' ? '' : 'none';
+                });
+                el.querySelector('#update-btn').addEventListener('click', async function() {
+                    this.textContent = 'Обновляю...';
+                    this.disabled = true;
+                    try {
+                        if ('serviceWorker' in navigator) {
+                            const reg = await navigator.serviceWorker.getRegistration();
+                            if (reg) await reg.update();
+                        }
+                        const keys = await caches.keys();
+                        await Promise.all(keys.map(k => caches.delete(k)));
+                    } finally {
+                        window.location.reload();
+                    }
                 });
                 scroller.scrollTop = tabScrollY.get(file) || 0;
                 return;
