@@ -147,7 +147,7 @@
 
 [Ш3: 14 мая](plan.md#sh3)
 
-![Expo Greenhouse](https://xn--e1aahbctaercho0b7g.xn--p1ai/wp-content/uploads/2025/11/image-678.jpeg)
+![Expo Greenhouse](https://images.adsttc.com/media/images/673f/049c/76ea/df00/019a/f638/newsletter/420_Expo-Cultural-Park-Greenhouse-Garden_CreateAR_interior_tropicalforest.jpg?1732183272)
 
 Тропическая оранжерея на территории бывшей **World Expo 2010** — крупнейшей всемирной выставки в истории (73 млн посетителей за 6 месяцев). Выставочные павильоны снесли, а территорию превратили в парк с оранжереей.
 
