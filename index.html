@@ -668,7 +668,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2152';
+        const APP_VERSION = '20260422-2155';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1536,8 +1536,10 @@
                 .then(v => {
                     if (v.trim() !== APP_VERSION && !updateAvailable) {
                         updateAvailable = true;
-                        showToast('🔔 Новая версия — обновляю...', null, 2500);
-                        setTimeout(hardReload, 2500);
+                        const settingsBtn = nav.querySelector('[data-file="settings"]');
+                        if (settingsBtn) settingsBtn.classList.add('has-update');
+                        if (currentPage === 'settings') loadPage('settings', { skipSave: true });
+                        showToast('🔔 Доступна новая версия', () => loadPage('settings'));
                     }
                 })
                 .catch(() => {});
