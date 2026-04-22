@@ -486,6 +486,16 @@
             color: var(--link);
             font-weight: 700;
         }
+        @keyframes search-flash {
+            0%   { background: transparent; }
+            15%  { background: color-mix(in srgb, var(--link) 20%, transparent); }
+            70%  { background: color-mix(in srgb, var(--link) 20%, transparent); }
+            100% { background: transparent; }
+        }
+        .search-flash {
+            animation: search-flash 2s ease forwards;
+            border-radius: 6px;
+        }
         /* Pull indicator */
         #pull-indicator {
             position: absolute;
@@ -544,7 +554,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-1610';
+        const APP_VERSION = '20260423-1620';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -974,6 +984,8 @@
                                 - scroller.getBoundingClientRect().top
                                 + scroller.scrollTop;
                             scroller.scrollTop = Math.max(0, elTop - 80);
+                            target.classList.add('search-flash');
+                            target.addEventListener('animationend', () => target.classList.remove('search-flash'), { once: true });
                         }
                         updateStickyHeader();
                     });
