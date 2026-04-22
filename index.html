@@ -784,7 +784,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '2.8';
+        const APP_VERSION = '2.9';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -2515,6 +2515,10 @@ onmessage = async ({ data }) => {
                     if (newVer !== APP_VERSION) {
                         latestVersion = newVer;
                         swReg.update().catch(() => {});
+                        // Если SW уже актуальный (precache закэшировал старый HTML) —
+                        // ждём 4с, и если обновление не прилетело — перезагружаемся сами.
+                        // К этому моменту stale-while-revalidate уже обновил кэш.
+                        setTimeout(() => { if (!updateAvailable) location.reload(); }, 4000);
                     }
                 })
                 .catch(() => {});
