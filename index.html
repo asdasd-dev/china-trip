@@ -368,7 +368,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2012';
+        const APP_VERSION = '20260422-2025';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -446,11 +446,32 @@
             }
         }
 
+        function _updateSettingsInPlace() {
+            if (currentPage !== 'settings') return;
+            const el = document.getElementById('content');
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            const currentAccent = localStorage.getItem('accent') || 'red';
+            el.querySelectorAll('[data-theme-btn]').forEach(btn => {
+                const isActive = btn.dataset.themeBtn === currentTheme;
+                btn.style.background = isActive ? 'var(--link)' : 'var(--toc-bg)';
+                btn.style.color = isActive ? '#fff' : 'var(--text)';
+                btn.style.fontWeight = isActive ? '600' : '500';
+            });
+            el.querySelectorAll('[data-accent]').forEach(btn => {
+                const a = ACCENTS.find(a => a.id === btn.dataset.accent);
+                if (!a) return;
+                const isActive = btn.dataset.accent === currentAccent;
+                btn.style.background = currentTheme === 'dark' ? a.dark.color : a.light.color;
+                btn.style.border = isActive ? '3px solid var(--text)' : '2px solid rgba(0,0,0,0.1)';
+                btn.style.outline = isActive ? '2px solid var(--bg)' : 'none';
+            });
+        }
+
         function applyAccent(id) {
             const accent = ACCENTS.find(a => a.id === id) || ACCENTS[0];
             localStorage.setItem('accent', id);
             _applyAccentColors(accent);
-            if (currentPage === 'settings') loadPage('settings', { skipSave: true });
+            _updateSettingsInPlace();
         }
 
         function applyTheme(theme) {
@@ -460,7 +481,7 @@
             const savedAccent = localStorage.getItem('accent') || 'red';
             const accent = ACCENTS.find(a => a.id === savedAccent) || ACCENTS[0];
             _applyAccentColors(accent);
-            if (currentPage === 'settings') loadPage('settings', { skipSave: true });
+            _updateSettingsInPlace();
         }
         applyTheme(localStorage.getItem('theme') || 'light');
 
