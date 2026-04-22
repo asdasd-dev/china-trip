@@ -88,6 +88,7 @@
             --city-btn-active-bg: #C0392B;
             --toggle-bg: rgba(0,0,0,0.06);
             --toggle-border: rgba(0,0,0,0.08);
+            --img-bg: #EDE5D8;
         }
         html[data-theme="dark"] {
             --bg: #0D1117;
@@ -105,6 +106,7 @@
             --th-bg: #161B22;
             --blockquote-border: #30363D;
             --blockquote-text: #7d8590;
+            --img-bg: #1C2128;
             --shadow: rgba(0,0,0,0.4);
             --nav-bg: #010409;
             --nav-border: #21262D;
@@ -224,7 +226,7 @@
         blockquote { border-left: 4px solid var(--blockquote-border); margin: 12px 0; padding: 4px 12px; color: var(--blockquote-text); }
         a { color: var(--link); text-decoration: none; }
         a:hover { text-decoration: underline; }
-        img { max-width: 100%; width: 100%; aspect-ratio: 4/3; object-fit: contain; border-radius: 8px; margin: 12px 0; }
+        img { max-width: 100%; width: 100%; aspect-ratio: 4/3; object-fit: contain; border-radius: 12px; margin: 12px 0; background: var(--img-bg); border: 1px solid var(--border); }
         ul, ol { padding-left: 20px; }
         li { margin: 4px 0; }
         .task-list-item {
@@ -542,7 +544,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-1520';
+        const APP_VERSION = '20260423-1530';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
