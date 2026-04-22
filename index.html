@@ -599,6 +599,11 @@
             color: var(--link);
             font-weight: 700;
         }
+        .search-breadcrumb {
+            font-size: 0.75em;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+        }
         @keyframes search-flash {
             0%   { background: transparent; }
             15%  { background: color-mix(in srgb, var(--link) 20%, transparent); }
@@ -668,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2158';
+        const APP_VERSION = '20260422-2200';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1394,6 +1399,20 @@
             }
         }
 
+        function getBreadcrumbAtPos(raw, pos) {
+            const hRe = /^(#{2,3})\s+(.+)$/gm;
+            let h2 = '', h3 = '', hm;
+            hRe.lastIndex = 0;
+            while ((hm = hRe.exec(raw)) !== null) {
+                if (hm.index >= pos) break;
+                const lvl = hm[1].length;
+                const txt = hm[2].replace(/[*_`[\]]/g, '').trim();
+                if (lvl === 2) { h2 = txt; h3 = ''; }
+                else if (lvl === 3) h3 = txt;
+            }
+            return [h2, h3].filter(Boolean).join(' › ');
+        }
+
         function highlightWords(text, words) {
             // Подсвечиваем каждое слово отдельно (длинные — первыми, чтобы не перебивать)
             let result = text;
@@ -1423,15 +1442,23 @@
                 const allPresent = wordRes.every(re => { re.lastIndex = 0; return re.test(clean); });
                 if (!allPresent) return;
 
-                // Снипеты вокруг вхождений первого слова
+                // Снипеты вокруг вхождений первого слова + хлебные крошки из raw
                 const matches = [];
                 const firstRe = new RegExp(escapeRe(words[0]), 'gi');
+                const firstReRaw = new RegExp(escapeRe(words[0]), 'gi');
                 let m;
                 while ((m = firstRe.exec(clean)) !== null && matches.length < 3) {
                     const s = Math.max(0, m.index - 70);
                     const e = Math.min(clean.length, m.index + words[0].length + 70);
                     const snippet = (s > 0 ? '…' : '') + clean.slice(s, e) + (e < clean.length ? '…' : '');
-                    matches.push({ snippet });
+                    // Найти соответствующую позицию в raw (n-е вхождение)
+                    let rawM, rawCount = 0;
+                    firstReRaw.lastIndex = 0;
+                    while ((rawM = firstReRaw.exec(raw)) !== null) {
+                        if (rawCount++ === matches.length) break;
+                    }
+                    const breadcrumb = rawM ? getBreadcrumbAtPos(raw, rawM.index) : '';
+                    matches.push({ snippet, breadcrumb });
                 }
                 if (!matches.length) return;
 
@@ -1442,9 +1469,15 @@
                 label.textContent = page.label;
                 group.appendChild(label);
 
-                matches.forEach(({ snippet }) => {
+                matches.forEach(({ snippet, breadcrumb }) => {
                     const div = document.createElement('div');
                     div.className = 'search-result';
+                    if (breadcrumb) {
+                        const bc = document.createElement('div');
+                        bc.className = 'search-breadcrumb';
+                        bc.textContent = breadcrumb;
+                        div.appendChild(bc);
+                    }
                     const p = document.createElement('div');
                     p.className = 'search-snippet';
                     p.innerHTML = highlightWords(snippet, words);
