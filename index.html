@@ -542,7 +542,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0115';
+        const APP_VERSION = '20260423-0124';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -955,11 +955,12 @@
                     scroller.scrollTop = 0;
                     requestAnimationFrame(() => {
                         const re = new RegExp(escapeRe(opts.searchQuery), 'i');
-                        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                        // Ищем по textContent блочных элементов — надёжнее чем text nodes,
+                        // т.к. слово может быть внутри <strong>/<em> и разбито на несколько узлов
+                        const blocks = el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote');
                         let found = null;
-                        let node;
-                        while ((node = walker.nextNode())) {
-                            if (re.test(node.textContent)) { found = node.parentElement; break; }
+                        for (const b of blocks) {
+                            if (re.test(b.textContent)) { found = b; break; }
                         }
                         if (found) {
                             const elTop = found.getBoundingClientRect().top
