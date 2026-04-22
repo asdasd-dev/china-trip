@@ -1,4 +1,4 @@
-const VERSION = '20260423-0510';
+const VERSION = '20260423-1400';
 const CACHE = 'china-trip-' + VERSION;
 const MODEL_CACHE = 'china-trip-models'; // персистентный, не удаляется при обновлениях
 
@@ -12,6 +12,10 @@ const PRECACHE = [
     './places.md',
     './manifest.json',
 ];
+
+self.addEventListener('message', e => {
+    if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 self.addEventListener('install', e => {
     e.waitUntil(
@@ -33,7 +37,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
 
-    // Не кэшируем Firebase, version.txt и не-GET запросы
+    // Не кэшируем Firebase, version.txt (нужен свежим для проверки обновлений) и не-GET запросы
     if (url.hostname.includes('firebasedatabase') || url.pathname.endsWith('version.txt') || e.request.method !== 'GET') return;
 
     // Запросы к HuggingFace (файлы модели) → кэшируем в отдельный MODEL_CACHE

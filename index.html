@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0510';
+        const APP_VERSION = '20260423-1400';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -869,6 +869,9 @@
                 const y = v.slice(0,4), mo = v.slice(4,6), d = v.slice(6,8), h = v.slice(9,11), mi = v.slice(11,13);
                 const changelog = [
                     { date: '23.04.2026', items: [
+                        'Обновление: нативный SW update flow (SKIP_WAITING) — новый SW скачивается один раз в фоне, активируется мгновенно',
+                        'Навигация по клику: точное попадание в нужный абзац через n-gram matching по сниппету',
+                        'Семантический поиск: повышен порог релевантности — меньше случайных совпадений',
                         'Умный поиск: результаты по смыслу теперь всегда показываются ниже точных результатов',
                         'Умный поиск: подсветка слов запроса в результатах',
                         'Семантический поиск: умный поиск по смыслу с ML-моделью (работает офлайн, кэшируется)',
@@ -1234,32 +1237,40 @@
                         const blocks = Array.from(el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote,.phrase-ru'));
                         const qWords = opts.searchQuery.trim().split(/\s+/).filter(Boolean);
                         const qWordRes = qWords.map(w => new RegExp(escapeRe(w), 'i'));
-                        const snippetWords = opts.searchSnippet
-                            ? new Set((opts.searchSnippet.toLowerCase().match(/[а-яёa-z0-9]+/gi) || []).filter(w => w.length > 2))
-                            : null;
 
-                        function snippetScore(b) {
-                            if (!snippetWords) return 0;
-                            const bWords = (b.textContent.toLowerCase().match(/[а-яёa-z0-9]+/gi) || []).filter(w => w.length > 2);
-                            return bWords.filter(w => snippetWords.has(w)).length;
+                        // N-gram matching: bigrams + trigrams из сниппета
+                        // Сохраняет порядок слов → не ломается на падежах ("красивых" ≠ "красивые")
+                        function ngramScore(b) {
+                            if (!opts.searchSnippet) return 0;
+                            const bText = b.textContent.toLowerCase();
+                            const sWords = (opts.searchSnippet.toLowerCase().match(/[а-яёa-z0-9]+/gi) || []);
+                            let hits = 0;
+                            for (let i = 0; i < sWords.length - 1; i++) {
+                                if (bText.includes(sWords[i] + ' ' + sWords[i + 1])) hits++;
+                            }
+                            for (let i = 0; i < sWords.length - 2; i++) {
+                                if (bText.includes(sWords[i] + ' ' + sWords[i + 1] + ' ' + sWords[i + 2])) hits += 2;
+                            }
+                            return hits;
                         }
 
-                        // Блоки содержащие ВСЕ слова запроса — среди них максимальное совпадение со сниппетом
-                        const allMatch = blocks.filter(b => qWordRes.every(re => re.test(b.textContent)));
-                        // Блоки содержащие хотя бы одно слово запроса — запасной вариант
-                        const anyMatch = blocks.filter(b => qWordRes.some(re => re.test(b.textContent)));
-
-                        const candidates = allMatch.length ? allMatch : anyMatch;
                         let target = null;
-                        if (candidates.length) {
-                            target = candidates.reduce((best, b) => snippetScore(b) > snippetScore(best) ? b : best, candidates[0]);
-                        } else if (snippetWords) {
-                            // Нет блоков с словами запроса (напр. семантический поиск) — ищем по сниппету
+
+                        // Сначала ищем по n-граммам сниппета — самый точный способ
+                        if (opts.searchSnippet) {
                             let bestScore = 0;
                             for (const b of blocks) {
-                                const s = snippetScore(b);
+                                const s = ngramScore(b);
                                 if (s > bestScore) { bestScore = s; target = b; }
                             }
+                        }
+
+                        // Если n-граммы не дали результата — фолбэк на слова запроса
+                        if (!target) {
+                            const allMatch = blocks.filter(b => qWordRes.every(re => re.test(b.textContent)));
+                            const anyMatch = blocks.filter(b => qWordRes.some(re => re.test(b.textContent)));
+                            const candidates = allMatch.length ? allMatch : anyMatch;
+                            if (candidates.length) target = candidates[0];
                         }
 
                         if (target) {
@@ -1378,8 +1389,26 @@
         document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
         document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 
+        let swReg = null;
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+            navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
+                swReg = reg;
+                // Новый SW уже мог скачаться пока страница была скрыта
+                if (reg.waiting) onUpdateReady();
+                // Слушаем установку нового SW
+                reg.addEventListener('updatefound', () => {
+                    const newSW = reg.installing;
+                    if (!newSW) return;
+                    newSW.addEventListener('statechange', () => {
+                        // installed + есть активный контроллер = новый SW ждёт в waiting
+                        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                            onUpdateReady();
+                        }
+                    });
+                });
+            }).catch(e => console.warn('SW registration failed:', e));
+            // Когда новый SW активировался (после SKIP_WAITING) — перезагружаемся
+            navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
         }
 
         // ── Search ──
@@ -1944,7 +1973,7 @@ onmessage = async ({ data }) => {
                 .filter(item => Array.isArray(item.emb) && item.emb.length === qEmb.length)
                 .map(item => ({ ...item, score: cosineSim(qEmb, item.emb) }));
             allScored.sort((a, b) => b.score - a.score);
-            const scored = allScored.filter(item => item.score > 0.15).slice(0, 6);
+            const scored = allScored.filter(item => item.score > 0.28).slice(0, 6);
             if (!scored.length) return null;
 
             const queryWords = query.trim().split(/\s+/).filter(Boolean);
@@ -2221,28 +2250,41 @@ onmessage = async ({ data }) => {
             }
         });
 
-        async function hardReload() {
-            if ('serviceWorker' in navigator) {
-                const reg = await navigator.serviceWorker.getRegistration();
-                if (reg) await reg.unregister();
-                const keys = await caches.keys();
-                // china-trip-models не трогаем — модель скачана отдельно
-                await Promise.all(keys.filter(k => k !== 'china-trip-models').map(k => caches.delete(k)));
-            }
-            window.location.reload();
+        function onUpdateReady() {
+            if (updateAvailable) return;
+            updateAvailable = true;
+            const settingsBtn = nav.querySelector('[data-file="settings"]');
+            if (settingsBtn) settingsBtn.classList.add('has-update');
+            if (currentPage === 'settings') loadPage('settings', { skipSave: true });
+            showToast('🔔 Доступна новая версия', () => loadPage('settings'));
         }
 
+        async function hardReload() {
+            if (swReg?.waiting) {
+                // Новый SW уже скачан и ждёт — активируем через SKIP_WAITING
+                // controllerchange listener выше сделает reload
+                swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } else {
+                // Fallback: принудительно сносим кэш и перезагружаемся
+                if (swReg) await swReg.unregister();
+                const keys = await caches.keys();
+                await Promise.all(keys.filter(k => k !== 'china-trip-models').map(k => caches.delete(k)));
+                location.reload();
+            }
+        }
+
+        // 1. version.txt (15 байт) — дешёвая рутинная проверка при каждом visibilitychange
+        // 2. Если новая версия — reg.update(): браузер сам скачивает sw.js и сравнивает байты
+        //    - sw.js новый → устанавливает → waiting → тост
+        //    - sw.js ещё старый (CDN не успел) → ничего, попробуем при следующем visibilitychange
+        // Итого: sw.js качается ровно один раз (браузером для установки)
         function checkVersion() {
+            if (!swReg || updateAvailable) return;
+            if (swReg.waiting) { onUpdateReady(); return; }
             fetch('./version.txt?t=' + Date.now(), { cache: 'no-store' })
                 .then(r => r.text())
                 .then(v => {
-                    if (v.trim() !== APP_VERSION && !updateAvailable) {
-                        updateAvailable = true;
-                        const settingsBtn = nav.querySelector('[data-file="settings"]');
-                        if (settingsBtn) settingsBtn.classList.add('has-update');
-                        if (currentPage === 'settings') loadPage('settings', { skipSave: true });
-                        showToast('🔔 Доступна новая версия', () => loadPage('settings'));
-                    }
+                    if (v.trim() !== APP_VERSION) swReg.update().catch(() => {});
                 })
                 .catch(() => {});
         }
