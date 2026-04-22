@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2311';
+        const APP_VERSION = '20260422-2313';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1636,6 +1636,7 @@
                 }
 
                 // Кэша нет — строим индекс и сохраняем
+                showToast('🔍 Подготовка умного поиска…', null, 2500);
                 const workerSrc = `
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2/dist/transformers.min.js';
 let pipe = null;
@@ -1697,6 +1698,7 @@ onmessage = async ({ data }) => {
 
                 semanticReady = true;
                 semanticIndexing = false;
+                showToast('✅ Умный поиск готов', null, 2500);
             } catch(e) {
                 console.error('Background indexing failed:', e);
                 semanticIndexing = false;
