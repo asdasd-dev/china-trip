@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0400';
+        const APP_VERSION = '20260423-0415';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -2024,25 +2024,29 @@ onmessage = async ({ data }) => {
                 if (!raw) return;
                 const clean = cleanMd(raw);
 
-                const allPresent = wordRes.every(re => { re.lastIndex = 0; return re.test(clean); });
-                if (!allPresent) return;
-
-                const matches = [];
-                const firstRe = new RegExp(escapeRe(words[0]), 'gi');
-                const firstReRaw = new RegExp(escapeRe(words[0]), 'gi');
-                let m;
-                while ((m = firstRe.exec(clean)) !== null && matches.length < 3) {
-                    const s = Math.max(0, m.index - 70);
-                    const e = Math.min(clean.length, m.index + words[0].length + 70);
-                    const snippet = (s > 0 ? '…' : '') + clean.slice(s, e) + (e < clean.length ? '…' : '');
-                    let rawM, rawCount = 0;
-                    firstReRaw.lastIndex = 0;
-                    while ((rawM = firstReRaw.exec(raw)) !== null) {
-                        if (rawCount++ === matches.length) break;
+                // Ищем окно где все слова присутствуют вместе
+                const WINDOW = 250;
+                const cleanLow = clean.toLowerCase();
+                const wordResLow = words.map(w => new RegExp(escapeRe(w.toLowerCase()), 'i'));
+                let bestStart = -1;
+                for (const anchorRe of wordResLow) {
+                    const re = new RegExp(anchorRe.source, 'gi');
+                    let m2;
+                    while ((m2 = re.exec(cleanLow)) !== null) {
+                        const ws = Math.max(0, m2.index - 50);
+                        const we = Math.min(clean.length, ws + WINDOW);
+                        const win = cleanLow.slice(ws, we);
+                        if (wordResLow.every(r => r.test(win))) { bestStart = ws; break; }
                     }
-                    const breadcrumb = rawM ? getBreadcrumbAtPos(raw, rawM.index) : '';
-                    matches.push({ snippet, breadcrumb });
+                    if (bestStart !== -1) break;
                 }
+                if (bestStart === -1) return;
+
+                const snippetEnd = Math.min(clean.length, bestStart + WINDOW);
+                const snippet = (bestStart > 0 ? '…' : '') + clean.slice(bestStart, snippetEnd) + (snippetEnd < clean.length ? '…' : '');
+                const rawM = new RegExp(escapeRe(words[0]), 'i').exec(raw);
+                const breadcrumb = rawM ? getBreadcrumbAtPos(raw, rawM.index) : '';
+                const matches = [{ snippet, breadcrumb }];
                 if (!matches.length) return;
 
                 const group = document.createElement('div');
