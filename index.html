@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2204';
+        const APP_VERSION = '20260422-2206';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1298,8 +1298,8 @@
             return row[n];
         }
 
-        // Для слова длиной 1-3 — только точное; 4-5 — ±1; 6+ — ±2
-        function fuzzyThreshold(len) { return len <= 3 ? 0 : len <= 5 ? 1 : 2; }
+        // Для слова длиной 1-3 — только точное; 4 — ±1; 5+ — ±2
+        function fuzzyThreshold(len) { return len <= 3 ? 0 : len <= 4 ? 1 : 2; }
 
         // Ищет в массиве слов ближайшее к queryWord в пределах порога; возвращает {word, dist} или null
         function fuzzyFindWord(queryWord, textWords) {
