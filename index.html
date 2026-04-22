@@ -397,6 +397,112 @@
         }
         html[data-theme="dark"] #toast { background: #e6edf3; color: #0D1117; }
         #toast.visible { transform: translateX(-50%) translateY(0); }
+
+        /* ── Search overlay ── */
+        #search-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 250;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        #search-overlay.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        #search-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 12px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        #search-input {
+            flex: 1;
+            border: none;
+            background: var(--toc-bg);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 16px;
+            color: var(--text);
+            outline: none;
+            font-family: inherit;
+        }
+        #search-input::placeholder { color: var(--text-muted); }
+        #search-close {
+            border: none;
+            background: none;
+            color: var(--text-muted);
+            font-size: 15px;
+            padding: 6px 4px 6px 8px;
+            cursor: pointer;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #search-results {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+        }
+        #search-hint {
+            padding: 48px 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        #search-hint .hint-icon { font-size: 36px; margin-bottom: 12px; }
+        .search-page-group { margin-top: 8px; }
+        .search-page-label {
+            padding: 10px 16px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--link);
+        }
+        .search-result {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.1s;
+        }
+        .search-result:active { background: var(--toc-bg); }
+        .search-snippet {
+            font-size: 14px;
+            line-height: 1.55;
+            color: var(--text);
+        }
+        .search-snippet mark {
+            background: none;
+            color: var(--link);
+            font-weight: 700;
+        }
+        /* Pull indicator */
+        #pull-indicator {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--text-muted);
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.15s;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        #pull-indicator.visible { opacity: 1; }
+        #pull-indicator svg { opacity: 0.5; }
+
         @media (min-width: 640px) {
             body { max-width: 900px; font-size: 16px; }
             #scroller { padding: 20px 20px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 36px); }
@@ -413,6 +519,19 @@
     <nav id="nav"></nav>
     <div id="sticky-header"></div>
     <div id="toast"></div>
+    <div id="pull-indicator">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Поиск</span>
+    </div>
+    <div id="search-overlay">
+        <div id="search-bar">
+            <input id="search-input" type="search" placeholder="Поиск по всем страницам..." autocomplete="off" autocorrect="off" spellcheck="false">
+            <button id="search-close">Отмена</button>
+        </div>
+        <div id="search-results">
+            <div id="search-hint"><div class="hint-icon">🔍</div>Потяни вниз чтобы искать</div>
+        </div>
+    </div>
     <div id="scroller">
         <div id="content">
             <div id="loading"><div class="spinner"></div><div>Loading...</div></div>
@@ -423,7 +542,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0018';
+        const APP_VERSION = '20260423-0100';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -832,7 +951,20 @@
                     }
                 });
 
-                if (!opts.skipSave) {
+                if (opts.searchQuery) {
+                    requestAnimationFrame(() => {
+                        const re = new RegExp(escapeRe(opts.searchQuery), 'i');
+                        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                        let node;
+                        while ((node = walker.nextNode())) {
+                            if (re.test(node.textContent)) {
+                                node.parentElement.scrollIntoView({ behavior: 'instant', block: 'center' });
+                                break;
+                            }
+                        }
+                        updateStickyHeader();
+                    });
+                } else if (!opts.skipSave) {
                     requestAnimationFrame(() => {
                         scroller.scrollTop = tabScrollY.get(file) || 0;
                         updateStickyHeader();
@@ -941,6 +1073,143 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
         }
+
+        // ── Search ──
+        const searchOverlay = document.getElementById('search-overlay');
+        const searchInput   = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        const searchHint    = document.getElementById('search-hint');
+        const pullIndicator = document.getElementById('pull-indicator');
+
+        function openSearch() {
+            searchOverlay.classList.add('visible');
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            searchResults.appendChild(searchHint);
+            setTimeout(() => searchInput.focus(), 100);
+            ensureAllPagesCached();
+        }
+
+        function closeSearch() {
+            searchOverlay.classList.remove('visible');
+            searchInput.blur();
+        }
+
+        document.getElementById('search-close').addEventListener('click', closeSearch);
+        searchInput.addEventListener('keydown', e => { if (e.key === 'Escape') closeSearch(); });
+
+        // Debounced search on input
+        let searchTimer = null;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => performSearch(searchInput.value.trim()), 200);
+        });
+
+        // Pre-load all pages into cache for search
+        async function ensureAllPagesCached() {
+            await Promise.all(PAGES.filter(p => p.file !== 'settings').map(p =>
+                pageCache.has(p.file) ? null :
+                fetch(BASE + p.file).then(r => r.text()).then(t => pageCache.set(p.file, t)).catch(() => {})
+            ));
+        }
+
+        function cleanMd(text) {
+            return text
+                .replace(/!\[.*?\]\(.*?\)/g, '')
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                .replace(/<[^>]+>/g, '')
+                .replace(/#{1,6} /g, '')
+                .replace(/\*{1,2}([^*\n]+)\*{1,2}/g, '$1')
+                .replace(/`[^`]+`/g, m => m.slice(1, -1))
+                .replace(/\n+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+        function performSearch(query) {
+            if (!query) {
+                searchResults.innerHTML = '';
+                searchResults.appendChild(searchHint);
+                return;
+            }
+            const re = new RegExp(escapeRe(query), 'gi');
+            const frag = document.createDocumentFragment();
+            let total = 0;
+
+            PAGES.filter(p => p.file !== 'settings').forEach(page => {
+                const raw = pageCache.get(page.file);
+                if (!raw) return;
+                const clean = cleanMd(raw);
+                const matches = [];
+                let m;
+                re.lastIndex = 0;
+                while ((m = re.exec(clean)) !== null && matches.length < 3) {
+                    const s = Math.max(0, m.index - 70);
+                    const e = Math.min(clean.length, m.index + query.length + 70);
+                    const snippet = (s > 0 ? '…' : '') + clean.slice(s, e) + (e < clean.length ? '…' : '');
+                    matches.push({ snippet, matchIdx: m.index - s + (s > 0 ? 1 : 0) });
+                }
+                if (!matches.length) return;
+
+                const group = document.createElement('div');
+                group.className = 'search-page-group';
+                const label = document.createElement('div');
+                label.className = 'search-page-label';
+                label.textContent = page.label;
+                group.appendChild(label);
+
+                matches.forEach(({ snippet }) => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result';
+                    const p = document.createElement('div');
+                    p.className = 'search-snippet';
+                    p.innerHTML = snippet.replace(new RegExp(escapeRe(query), 'gi'), '<mark>$&</mark>');
+                    div.appendChild(p);
+                    div.addEventListener('click', () => {
+                        closeSearch();
+                        loadPage(page.file, { searchQuery: query });
+                    });
+                    group.appendChild(div);
+                    total++;
+                });
+                frag.appendChild(group);
+            });
+
+            searchResults.innerHTML = '';
+            if (total === 0) {
+                searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🤷</div>Ничего не найдено</div>';
+            } else {
+                searchResults.appendChild(frag);
+            }
+        }
+
+        // ── Pull-to-search gesture ──
+        let pullStartY = 0;
+        let pullTriggered = false;
+        scroller.addEventListener('touchstart', e => {
+            if (e.touches.length === 1 && scroller.scrollTop === 0 && currentPage !== 'settings') {
+                pullStartY = e.touches[0].clientY;
+                pullTriggered = false;
+            } else {
+                pullStartY = 0;
+            }
+        }, { passive: true });
+        scroller.addEventListener('touchmove', e => {
+            if (!pullStartY || pullTriggered) return;
+            const dy = e.touches[0].clientY - pullStartY;
+            pullIndicator.classList.toggle('visible', dy > 20);
+            if (dy > 60) {
+                pullTriggered = true;
+                pullIndicator.classList.remove('visible');
+                openSearch();
+            }
+        }, { passive: true });
+        scroller.addEventListener('touchend', () => {
+            pullStartY = 0;
+            pullIndicator.classList.remove('visible');
+        }, { passive: true });
 
         const toast = document.getElementById('toast');
         let toastTimer = null;
