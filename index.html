@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0430';
+        const APP_VERSION = '20260423-0445';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1229,14 +1229,30 @@
 
                 if (opts.searchQuery) {
                     scroller.scrollTop = 0;
-                    const qWords = opts.searchQuery.trim().split(/\s+/).filter(Boolean);
-                    const qWordRes = qWords.map(w => new RegExp(escapeRe(w), 'i'));
                     // aspect-ratio: 4/3 резервирует место под картинки — layout стабильный сразу
                     requestAnimationFrame(() => {
-                        const blocks = el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote,.phrase-ru');
-                        // Сначала ищем блок где все слова есть, потом — где хоть одно
-                        const target = Array.from(blocks).find(b => qWordRes.every(re => re.test(b.textContent)))
-                            || Array.from(blocks).find(b => qWordRes.some(re => re.test(b.textContent)));
+                        const blocks = Array.from(el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote,.phrase-ru'));
+                        let target = null;
+
+                        if (opts.searchSnippet) {
+                            // Ищем блок с максимальным пересечением слов со сниппетом
+                            const snippetWords = new Set((opts.searchSnippet.toLowerCase().match(/[а-яёa-z0-9]+/gi) || []).filter(w => w.length > 2));
+                            let bestScore = 0;
+                            for (const b of blocks) {
+                                const bWords = (b.textContent.toLowerCase().match(/[а-яёa-z0-9]+/gi) || []).filter(w => w.length > 2);
+                                const score = bWords.filter(w => snippetWords.has(w)).length;
+                                if (score > bestScore) { bestScore = score; target = b; }
+                            }
+                        }
+
+                        if (!target) {
+                            // Фоллбэк: первый блок где есть хотя бы одно слово запроса
+                            const qWords = opts.searchQuery.trim().split(/\s+/).filter(Boolean);
+                            const qWordRes = qWords.map(w => new RegExp(escapeRe(w), 'i'));
+                            target = blocks.find(b => qWordRes.every(re => re.test(b.textContent)))
+                                  || blocks.find(b => qWordRes.some(re => re.test(b.textContent)));
+                        }
+
                         if (target) {
                             const elTop = target.getBoundingClientRect().top
                                 - scroller.getBoundingClientRect().top
@@ -1529,8 +1545,7 @@
                     div.appendChild(p);
                     div.addEventListener('click', () => {
                         closeSearch();
-                        const snippetAnchor = snippet.replace(/^…/, '').trim().split(/\s+/).slice(0, 5).join(' ');
-                        loadPage(page.file, { searchQuery: snippetAnchor });
+                        loadPage(page.file, { searchQuery: fw[0], searchSnippet: snippet });
                     });
                     group.appendChild(div);
                     total++;
@@ -1955,7 +1970,7 @@ onmessage = async ({ data }) => {
                     div.appendChild(p);
                     div.addEventListener('click', () => {
                         closeSearch();
-                        loadPage(page.file, { searchQuery: item.chunk.split(/\s+/).slice(0, 4).join(' ') });
+                        loadPage(page.file, { searchQuery: query, searchSnippet: item.chunk });
                     });
                     group.appendChild(div);
                 });
@@ -2072,9 +2087,7 @@ onmessage = async ({ data }) => {
                     div.appendChild(p);
                     div.addEventListener('click', () => {
                         closeSearch();
-                        // Берём уникальную фразу из сниппета чтобы точно попасть в нужный блок
-                        const snippetAnchor = snippet.replace(/^…/, '').trim().split(/\s+/).slice(0, 5).join(' ');
-                        loadPage(page.file, { searchQuery: snippetAnchor });
+                        loadPage(page.file, { searchQuery: query, searchSnippet: snippet });
                     });
                     group.appendChild(div);
                     total++;
