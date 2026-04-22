@@ -280,6 +280,24 @@
             opacity: 0;
             pointer-events: none;
         }
+        #toast {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-80px);
+            background: #1a1a1a;
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            z-index: 300;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+        html[data-theme="dark"] #toast { background: #e6edf3; color: #0D1117; }
+        #toast.visible { transform: translateX(-50%) translateY(0); }
         @media (min-width: 640px) {
             body { max-width: 900px; font-size: 16px; }
             #scroller { padding: 20px 20px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 24px); }
@@ -296,6 +314,7 @@
 <body>
     <nav id="nav"></nav>
     <button id="theme-toggle" title="Переключить тему"></button>
+    <div id="toast"></div>
     <div id="scroller">
         <div id="content">
             <div id="loading"><div class="spinner"></div><div>Loading...</div></div>
@@ -626,6 +645,13 @@
             navigator.serviceWorker.register('./sw.js');
         }
 
+        const toast = document.getElementById('toast');
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+        }
+
         function checkVersion() {
             fetch('./version.txt?t=' + Date.now(), { cache: 'no-store' })
                 .then(r => r.text())
@@ -635,6 +661,7 @@
                         const settingsBtn = nav.querySelector('[data-file="settings"]');
                         if (settingsBtn) settingsBtn.classList.add('has-update');
                         if (currentPage === 'settings') loadPage('settings', { skipSave: true });
+                        showToast('🔔 Доступна новая версия');
                     }
                 })
                 .catch(() => {});
