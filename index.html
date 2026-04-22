@@ -414,7 +414,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2135';
+        const APP_VERSION = '20260422-2148';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -849,14 +849,17 @@
             const allHeadings = Array.from(el.querySelectorAll('h1, h2'));
             if (h1s.length === 0) { stickyHeader.classList.remove('visible'); return; }
 
-            const OFFSET = 56; // ниже sticky header
-            // Показываем только когда первый h1 ушёл за экран
-            if (h1s[0].getBoundingClientRect().top >= OFFSET) {
-                stickyHeader.classList.remove('visible');
-                return;
-            }
+            const OFFSET = 56;
+            const viewH = window.innerHeight;
 
-            const multiCity = h1s.length > 1;
+            // Прячем если любой заголовок сейчас виден на экране
+            const anyVisible = allHeadings.some(h => {
+                const top = h.getBoundingClientRect().top;
+                return top >= OFFSET && top < viewH;
+            });
+            if (anyVisible) { stickyHeader.classList.remove('visible'); return; }
+
+            // Находим текущий контекст — последние h1/h2 ушедшие вверх
             let curH1 = null, curH2 = null;
             for (const h of allHeadings) {
                 if (h.getBoundingClientRect().top < OFFSET) {
@@ -867,6 +870,7 @@
 
             if (!curH1) { stickyHeader.classList.remove('visible'); return; }
 
+            const multiCity = h1s.length > 1;
             if (multiCity) {
                 const cityName = curH1.textContent.split('(')[0].trim();
                 stickyHeader.innerHTML = curH2
