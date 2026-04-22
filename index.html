@@ -368,7 +368,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2001';
+        const APP_VERSION = '20260422-2012';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -563,12 +563,12 @@
 
                 el.innerHTML = '<h1>Настройки</h1>'
                     + '<div class="city-nav" id="settings-tabs">'
-                    + '<button class="active" data-tab="appearance">Вид</button>'
-                    + '<button data-tab="info">Версия</button>'
+                    + '<button class="active" data-tab="info">Версия</button>'
+                    + '<button data-tab="appearance">Вид</button>'
                     + '<button data-tab="changelog">Ченжлог</button>'
                     + '</div>'
 
-                    + '<div id="settings-appearance">'
+                    + '<div id="settings-appearance" style="display:none">'
                     + '<p style="margin:0 0 10px;font-weight:600;color:var(--text-muted);font-size:0.8em;text-transform:uppercase;letter-spacing:0.5px">Тема</p>'
                     + '<div style="display:flex;gap:8px;margin-bottom:24px">'
                     + '<button data-theme-btn="light" style="' + themeRowStyle + 'background:' + (lightActive ? 'var(--link)' : 'var(--toc-bg)') + ';color:' + (lightActive ? '#fff' : 'var(--text)') + '">☀️ Светлая</button>'
@@ -578,7 +578,7 @@
                     + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">' + accentSwatches + '</div>'
                     + '</div>'
 
-                    + '<div id="settings-info" style="display:none">'
+                    + '<div id="settings-info">'
                     + (updateAvailable ? '<div style="margin-top:12px;padding:12px 14px;border-radius:8px;background:#fff3cd;border:1px solid #ffc107;color:#856404;font-weight:600">🔔 Доступна новая версия</div>' : '')
                     + '<table style="margin-top:12px;width:100%"><tr><th>Версия</th><td>' + v + '</td></tr>'
                     + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>'
