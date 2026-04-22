@@ -1,6 +1,7 @@
-const VERSION = '20260422-2220';
+const VERSION = '20260422-2238';
 const CACHE = 'china-trip-' + VERSION;
 
+// Только локальные файлы — CDN кэшируется через fetch handler при первом обращении
 const PRECACHE = [
     './',
     './plan.md',
@@ -8,8 +9,7 @@ const PRECACHE = [
     './budget.md',
     './info.md',
     './places.md',
-    'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
-    'https://unpkg.com/lucide@latest/dist/umd/lucide.min.js',
+    './manifest.json',
 ];
 
 self.addEventListener('install', e => {

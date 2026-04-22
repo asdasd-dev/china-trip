@@ -423,7 +423,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2220';
+        const APP_VERSION = '20260422-2238';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -747,6 +747,7 @@
                 }
 
                 if (h1s.length > 1) {
+                    h1s[0].style.display = 'none'; // прячем заголовок страницы — навбар его заменяет
                     const cityNavH1s = h1s.slice(1); // пропускаем заголовок страницы
                     const cityNav = document.createElement('div');
                     cityNav.className = 'city-nav scrollable';
