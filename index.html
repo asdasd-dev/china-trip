@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2358';
+        const APP_VERSION = '20260423-0005';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1682,6 +1682,15 @@ onmessage = async ({ data }) => {
             });
         }
 
+        // Если поиск открыт и есть запрос — дозаписываем семантику в результаты
+        function triggerSemanticIfSearchOpen() {
+            const q = searchInput.value.trim();
+            if (!q || q.length < 3) return;
+            // Убираем текст "индексируется" если он есть
+            document.querySelectorAll('#search-results > div[data-semantic-pending]').forEach(el => el.remove());
+            appendSemanticResults(q, searchResults);
+        }
+
         async function startBackgroundIndexing() {
             if (semanticReady || semanticIndexing) return;
             if (localStorage.getItem('smartSearch') === 'off') return;
@@ -1698,6 +1707,7 @@ onmessage = async ({ data }) => {
                     semanticIndexing = false;
                     // Воркер нужен для эмбеддинга запроса — запускаем в фоне
                     createWorker().catch(e => console.error('Worker init failed:', e));
+                    triggerSemanticIfSearchOpen();
                     return;
                 }
 
@@ -1724,6 +1734,7 @@ onmessage = async ({ data }) => {
                 semanticReady = true;
                 semanticIndexing = false;
                 showToast('✅ Умный поиск готов', null, 2500);
+                triggerSemanticIfSearchOpen();
             } catch(e) {
                 console.error('Background indexing failed:', e);
                 semanticIndexing = false;
@@ -1931,6 +1942,7 @@ onmessage = async ({ data }) => {
         function appendSmartSearchBtn(query) {
             if (localStorage.getItem('smartSearch') === 'off') return;
             const el = document.createElement('div');
+            el.dataset.semanticPending = '1';
             el.style.cssText = 'padding:10px 16px;font-size:0.8em;color:var(--text-muted)';
             el.textContent = semanticIndexing ? '🔍 Индексируется поиск по смыслу…' : '🔍 Поиск по смыслу загружается…';
             searchResults.appendChild(el);
