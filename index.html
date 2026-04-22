@@ -589,7 +589,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2129';
+        const APP_VERSION = '20260422-2130';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1224,8 +1224,9 @@
         let todayToastTimer = null;
 
         function showTodayToast(h2, scrollFn) {
-            if (sessionStorage.getItem('todayToastShown')) return;
-            sessionStorage.setItem('todayToastShown', '1');
+            const today = new Date().toDateString();
+            if (sessionStorage.getItem('todayToastDate') === today) return;
+            sessionStorage.setItem('todayToastDate', today);
             const title = h2.textContent.replace(/^[А-ЯЁа-яё\d]+:\s*/, '').trim(); // убираем "Ш1: "
             todayToastEl.textContent = '📍 Сегодня: ' + title;
             todayToastEl.classList.add('visible');
