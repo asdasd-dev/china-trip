@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0310';
+        const APP_VERSION = '20260423-0330';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1002,6 +1002,7 @@
                         + '<li>Нажмите «Запустить индексацию» — займёт минуту при первом запуске</li>'
                         + '<li>После завершения результаты по смыслу появятся автоматически под обычными</li>'
                         + '<li>Индекс сохраняется и загружается при следующих запусках</li>'
+                        + '<li>При обновлении приложения до новой версии индекс сбрасывается — нужно переиндексировать</li>'
                         + '</ol>'
                     );
                 });
@@ -1952,8 +1953,9 @@ onmessage = async ({ data }) => {
 
                 const section = document.createElement('div');
                 section.dataset.semanticSection = '1';
+                section.style.cssText = 'border-top:1px solid var(--border);margin-top:8px';
                 const hdr = document.createElement('div');
-                hdr.style.cssText = 'padding:16px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
+                hdr.style.cssText = 'padding:10px 16px 6px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
                 hdr.textContent = 'По смыслу';
                 section.appendChild(hdr);
                 section.appendChild(frag);
@@ -2115,7 +2117,7 @@ onmessage = async ({ data }) => {
             const overlay = document.createElement('div');
             overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center;padding:0';
             const sheet = document.createElement('div');
-            sheet.style.cssText = 'background:var(--bg);border-radius:20px 20px 0 0;padding:24px 20px 40px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 -4px 24px rgba(0,0,0,.15)';
+            sheet.style.cssText = 'background:var(--bg);border-radius:20px 20px 0 0;padding:24px 20px 40px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 -4px 24px rgba(0,0,0,.15);overscroll-behavior:contain';
             sheet.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
                 + '<strong style="font-size:17px">' + title + '</strong>'
                 + '<button style="border:none;background:none;font-size:22px;cursor:pointer;color:var(--text-muted);padding:0;line-height:1" id="_modal-close">×</button>'
@@ -2126,8 +2128,15 @@ onmessage = async ({ data }) => {
             // Блокируем скролл фона
             const prevOverflow = document.body.style.overflow;
             document.body.style.overflow = 'hidden';
-            overlay.addEventListener('touchmove', e => {
-                if (!sheet.contains(e.target)) e.preventDefault();
+            overlay.addEventListener('touchmove', e => { e.preventDefault(); }, { passive: false });
+            let _touchStartY = 0;
+            sheet.addEventListener('touchstart', e => { _touchStartY = e.touches[0].clientY; }, { passive: true });
+            sheet.addEventListener('touchmove', e => {
+                e.stopPropagation();
+                const dy = e.touches[0].clientY - _touchStartY;
+                const atTop = sheet.scrollTop === 0;
+                const atBottom = sheet.scrollTop + sheet.clientHeight >= sheet.scrollHeight - 1;
+                if ((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault();
             }, { passive: false });
 
             const close = () => {
