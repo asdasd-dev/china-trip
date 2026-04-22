@@ -233,44 +233,6 @@
         .toc-block a:last-child { border-bottom: none; }
         .toc-block a:active { opacity: 0.7; }
         a.cross-link { color: var(--link); text-decoration: underline dotted; cursor: pointer; }
-        #scroll-top {
-            position: fixed;
-            bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
-            left: 16px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: none;
-            background: var(--scroll-bg);
-            color: #fff;
-            font-size: 0;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 2px 8px var(--shadow);
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s, background 0.2s;
-            -webkit-tap-highlight-color: transparent;
-            z-index: 1000;
-        }
-        #scroll-top::after {
-            content: '';
-            display: block;
-            width: 10px;
-            height: 10px;
-            border-top: 2.5px solid #fff;
-            border-left: 2.5px solid #fff;
-            transform: rotate(45deg);
-            margin-top: 4px;
-        }
-        html[data-theme="dark"] #scroll-top::after {
-            border-top-color: #e6edf3;
-            border-left-color: #e6edf3;
-        }
-        #scroll-top.visible { opacity: 1; pointer-events: auto; }
         /* Theme toggle button */
         #theme-toggle {
             position: fixed;
@@ -306,15 +268,12 @@
             h3 { font-size: 1.17em; }
             th, td { padding: 8px 12px; white-space: normal; font-size: 14px; }
             table { display: table; }
-            #scroll-top { bottom: calc(var(--nav-h) + 24px); left: 24px; width: 44px; height: 44px; }
-            #scroll-top:hover { opacity: 0.85; }
             #theme-toggle { top: 16px; right: 24px; }
         }
     </style>
 </head>
 <body>
     <nav id="nav"></nav>
-    <button id="scroll-top"></button>
     <button id="theme-toggle" title="Переключить тему"></button>
     <div id="content">
         <div id="loading"><div class="spinner"></div><div>Loading...</div></div>
@@ -323,6 +282,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
+        const pageCache = new Map();
 
         const PAGES = [
             { file: 'plan.md', label: 'Маршрут', icon: '🗺️' },
@@ -354,7 +314,13 @@
             btn.title = p.label;
             btn.innerHTML = '<span class="tab-icon">' + p.icon + '</span><span class="tab-dot"></span>';
             if (p.file === currentPage) btn.classList.add('active');
-            btn.addEventListener('click', () => loadPage(p.file));
+            btn.addEventListener('click', () => {
+                if (p.file === currentPage) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                }
+                loadPage(p.file);
+            });
             nav.appendChild(btn);
         });
 
@@ -385,14 +351,16 @@
             }
 
             const el = document.getElementById('content');
-            el.innerHTML = '<div id="loading"><div class="spinner"></div><div>Loading...</div></div>';
+            if (!pageCache.has(file)) {
+                el.innerHTML = '<div id="loading"><div class="spinner"></div><div>Loading...</div></div>';
+            }
             window.scrollTo(0, 0);
 
             try {
-                const [mdText, state] = await Promise.all([
-                    fetch(BASE + file + '?t=' + Date.now()).then(r => r.text()),
-                    loadState()
-                ]);
+                const fetchMd = pageCache.has(file)
+                    ? Promise.resolve(pageCache.get(file))
+                    : fetch(BASE + file).then(r => r.text()).then(t => { pageCache.set(file, t); return t; });
+                const [mdText, state] = await Promise.all([fetchMd, loadState()]);
 
                 marked.setOptions({ breaks: true, gfm: true });
                 let html = marked.parse(mdText);
@@ -525,16 +493,10 @@
             window.visualViewport.addEventListener('scroll', updateNav);
         }
 
-        // ── Scroll-top button + theme toggle hide on scroll ──
-        const scrollBtn = document.getElementById('scroll-top');
-        let lastScrollY = 0;
+        // ── Theme toggle: hide on scroll ──
         window.addEventListener('scroll', () => {
-            const y = window.scrollY;
-            scrollBtn.classList.toggle('visible', y > 400);
-            themeToggle.classList.toggle('hidden', y > 30);
-            lastScrollY = y;
+            themeToggle.classList.toggle('hidden', window.scrollY > 30);
         }, { passive: true });
-        scrollBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
         window.addEventListener('popstate', e => {
             const state = e.state;
