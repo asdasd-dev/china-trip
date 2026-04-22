@@ -266,6 +266,15 @@
             margin-bottom: 16px;
             flex-wrap: wrap;
         }
+        .city-nav.scrollable {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 2px;
+        }
+        .city-nav.scrollable::-webkit-scrollbar { display: none; }
+        .city-nav.scrollable button { flex-shrink: 0; }
         .city-nav button {
             padding: 6px 18px;
             border: 1px solid rgba(255,255,255,0.75);
@@ -414,7 +423,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2202';
+        const APP_VERSION = '20260422-2220';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -738,9 +747,10 @@
                 }
 
                 if (h1s.length > 1) {
+                    const cityNavH1s = h1s.slice(1); // пропускаем заголовок страницы
                     const cityNav = document.createElement('div');
-                    cityNav.className = 'city-nav';
-                    h1s.forEach(h1 => {
+                    cityNav.className = 'city-nav scrollable';
+                    cityNavH1s.forEach(h1 => {
                         const btn = document.createElement('button');
                         btn.textContent = h1.textContent.split('(')[0].trim();
                         btn.addEventListener('click', () => h1.scrollIntoView({ behavior: 'instant' }));
