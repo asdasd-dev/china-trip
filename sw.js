@@ -1,4 +1,4 @@
-const VERSION = '20260422-1907';
+const VERSION = '20260422-1911';
 const CACHE = 'china-trip-' + VERSION;
 
 const PRECACHE = [
@@ -9,6 +9,7 @@ const PRECACHE = [
     './info.md',
     './places.md',
     'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
+    'https://unpkg.com/lucide@latest/dist/umd/lucide.min.js',
 ];
 
 self.addEventListener('install', e => {
