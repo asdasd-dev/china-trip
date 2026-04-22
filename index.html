@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '2.1';
+        const APP_VERSION = '2.2';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1885,9 +1885,27 @@ onmessage = async ({ data }) => {
             return new Promise((resolve, reject) => {
                 const orig = semanticWorker.onmessage;
                 semanticWorker.onmessage = ({ data }) => {
-                    if (data.type === 'ready') { semanticWorker.onmessage = orig; resolve(); }
-                    else if (data.type === 'error' && data.id == null) reject(new Error(data.msg));
-                    else orig({ data });
+                    if (data.type === 'ready') {
+                        semanticWorker.onmessage = orig;
+                        refreshModelStatus(); // модель полностью скачана — обновим статус
+                        resolve();
+                    } else if (data.type === 'error' && data.id == null) {
+                        reject(new Error(data.msg));
+                    } else if (data.type === 'progress') {
+                        const p = data.p;
+                        const el = document.getElementById('model-status-text');
+                        if (el && p) {
+                            if (p.status === 'downloading' && p.file) {
+                                const pct = p.progress != null ? Math.round(p.progress) + '%' : '';
+                                const fname = p.file.split('/').pop();
+                                el.textContent = '📥 Скачивание: ' + fname + (pct ? ' · ' + pct : '');
+                            } else if (p.status === 'loading' && p.file) {
+                                el.textContent = '⏳ Загрузка модели в память…';
+                            }
+                        }
+                    } else {
+                        orig({ data });
+                    }
                 };
                 semanticWorker.postMessage({ type: 'init' });
             });
