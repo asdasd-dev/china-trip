@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2331';
+        const APP_VERSION = '20260422-2350';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -841,6 +841,8 @@
                 const y = v.slice(0,4), mo = v.slice(4,6), d = v.slice(6,8), h = v.slice(9,11), mi = v.slice(11,13);
                 const changelog = [
                     { date: '23.04.2026', items: [
+                        'Умный поиск: результаты по смыслу теперь всегда показываются ниже точных результатов',
+                        'Умный поиск: подсветка слов запроса в результатах',
                         'Семантический поиск: умный поиск по смыслу с ML-моделью (работает офлайн, кэшируется)',
                         'Хлебные крошки в результатах поиска: показывает раздел и подраздел',
                         'Нечёткий поиск: находит слова с опечатками и похожие формы',
@@ -1755,6 +1757,7 @@ onmessage = async ({ data }) => {
                 .slice(0, 6);
             if (!scored.length) return null;
 
+            const queryWords = query.trim().split(/\s+/).filter(Boolean);
             const frag = document.createDocumentFragment();
             const byPage = new Map();
             for (const item of scored) {
@@ -1780,7 +1783,9 @@ onmessage = async ({ data }) => {
                     }
                     const p = document.createElement('div');
                     p.className = 'search-snippet';
-                    p.textContent = item.chunk.slice(0, 160) + (item.chunk.length > 160 ? '…' : '');
+                    const snippet = item.chunk.slice(0, 200) + (item.chunk.length > 200 ? '…' : '');
+                    // Выделяем слова запроса если они встречаются в чанке
+                    p.innerHTML = highlightWords(snippet, queryWords);
                     div.appendChild(p);
                     div.addEventListener('click', () => {
                         closeSearch();
@@ -1791,6 +1796,26 @@ onmessage = async ({ data }) => {
                 frag.appendChild(group);
             }
             return frag;
+        }
+
+        // Добавляет блок "По смыслу" в конец searchResults
+        async function appendSemanticResults(query, container) {
+            if (localStorage.getItem('smartSearch') === 'off') return;
+            if (query.trim().length < 3) return;
+
+            if (!semanticReady) {
+                appendSmartSearchBtn(query);
+                return;
+            }
+
+            const frag = await querySemanticIndex(query);
+            if (!frag) return;
+
+            const hdr = document.createElement('div');
+            hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
+            hdr.textContent = 'По смыслу';
+            container.appendChild(hdr);
+            container.appendChild(frag);
         }
 
         async function showSemanticResults(query, btn) {
@@ -1826,11 +1851,9 @@ onmessage = async ({ data }) => {
                 if (!raw) return;
                 const clean = cleanMd(raw);
 
-                // Все слова должны присутствовать в тексте
                 const allPresent = wordRes.every(re => { re.lastIndex = 0; return re.test(clean); });
                 if (!allPresent) return;
 
-                // Снипеты вокруг вхождений первого слова + хлебные крошки из raw
                 const matches = [];
                 const firstRe = new RegExp(escapeRe(words[0]), 'gi');
                 const firstReRaw = new RegExp(escapeRe(words[0]), 'gi');
@@ -1888,7 +1911,7 @@ onmessage = async ({ data }) => {
                     hdr.textContent = 'Похожие результаты';
                     searchResults.appendChild(hdr);
                     searchResults.appendChild(fuzzyFrag);
-                    if (query.trim().length >= 3) appendSmartSearchBtn(query);
+                    await appendSemanticResults(query, searchResults);
                 } else if (query.trim().length >= 3) {
                     if (semanticReady) {
                         await showSemanticResults(query);
@@ -1901,7 +1924,7 @@ onmessage = async ({ data }) => {
                 }
             } else {
                 searchResults.appendChild(frag);
-                if (query.trim().length >= 3) appendSmartSearchBtn(query);
+                await appendSemanticResults(query, searchResults);
             }
         }
 
