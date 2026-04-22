@@ -670,11 +670,10 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@xenova/transformers@2/dist/transformers.min.js" async></script>
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2238';
+        const APP_VERSION = '20260422-2242';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1561,18 +1560,25 @@
             return chunks;
         }
 
+        let _transformersModule = null;
         async function ensureTransformers() {
-            if (window.transformers) return window.transformers;
-            for (let i = 0; i < 100; i++) {
-                await new Promise(r => setTimeout(r, 100));
-                if (window.transformers) return window.transformers;
+            if (_transformersModule) return _transformersModule;
+            try {
+                _transformersModule = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2/dist/transformers.min.js');
+                return _transformersModule;
+            } catch(e) {
+                console.error('Failed to load transformers.js:', e);
+                return null;
             }
-            return null;
         }
 
-        function setSearchLoadingMsg(msg) {
-            const el = document.getElementById('search-loading-msg');
-            if (el) el.textContent = msg;
+        let semanticToastTimer = null;
+        function updateSemanticToast(msg) {
+            if (toastTimer) clearTimeout(toastTimer);
+            toast.textContent = msg;
+            toast.classList.add('visible');
+            toast.classList.remove('clickable');
+            toast._onClick = null;
         }
 
         async function initSemanticSearch() {
@@ -1583,6 +1589,8 @@
             }
             semanticLoading = true;
             try {
+                updateSemanticToast('🔍 Загрузка модели поиска…');
+
                 const tf = await ensureTransformers();
                 if (!tf) throw new Error('transformers.js not available');
                 const { pipeline } = tf;
@@ -1593,13 +1601,17 @@
                     {
                         progress_callback: (p) => {
                             if (p.status === 'progress' && p.progress != null) {
-                                setSearchLoadingMsg(`Загрузка модели: ${Math.round(p.progress)}%`);
+                                updateSemanticToast(`🔍 Загрузка модели: ${Math.round(p.progress)}%`);
+                            } else if (p.status === 'initiate') {
+                                updateSemanticToast(`🔍 Загрузка: ${p.file || ''}…`);
                             } else if (p.status === 'done') {
-                                setSearchLoadingMsg('Индексирование…');
+                                updateSemanticToast('🔍 Индексирование…');
                             }
                         }
                     }
                 );
+
+                updateSemanticToast('🔍 Индексирование…');
 
                 // Build index from all pages
                 semanticIndex = [];
@@ -1620,15 +1632,16 @@
                         const breadcrumb = pos >= 0 ? getBreadcrumbAtPos(raw, pos) : '';
                         semanticIndex.push({ page, chunk, breadcrumb, emb });
                     }
-                    setSearchLoadingMsg(`Индексирование: ${page.label}…`);
                 }
 
                 semanticReady = true;
                 semanticLoading = false;
+                showToast('✅ Умный поиск готов', null, 3000);
                 return true;
             } catch(e) {
                 console.error('Semantic search init failed:', e);
                 semanticLoading = false;
+                showToast('❌ Не удалось загрузить модель поиска', null, 4000);
                 return false;
             }
         }
@@ -1782,7 +1795,7 @@
                     if (semanticReady) {
                         await showSemanticResults(query);
                     } else {
-                        searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🔍</div><span id="search-loading-msg">Загрузка модели…</span></div>';
+                        searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🔍</div>Анализирую…</div>';
                         const ok = await initSemanticSearch();
                         if (ok) {
                             await showSemanticResults(query);
