@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2258';
+        const APP_VERSION = '20260422-2300';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1533,7 +1533,6 @@
         }
 
         // ── Semantic Search ──
-        let semanticPipeline = null;
         let semanticIndex = null;
         let semanticReady = false;
         let semanticLoading = false;
@@ -1561,25 +1560,26 @@
             return chunks;
         }
 
-        let _transformersModule = null;
-        async function ensureTransformers() {
-            if (_transformersModule) return _transformersModule;
-            try {
-                _transformersModule = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2/dist/transformers.min.js');
-                return _transformersModule;
-            } catch(e) {
-                console.error('Failed to load transformers.js:', e);
-                return null;
-            }
-        }
+        // ── Web Worker для ONNX inference (не блокирует главный поток) ──
+        let semanticWorker = null;
+        let workerReady = false;
+        let workerMsgId = 0;
+        const workerCbs = new Map();
 
-        let semanticToastTimer = null;
         function updateSemanticToast(msg) {
             if (toastTimer) clearTimeout(toastTimer);
             toast.textContent = msg;
             toast.classList.add('visible');
             toast.classList.remove('clickable');
             toast._onClick = null;
+        }
+
+        function workerEmbed(text) {
+            return new Promise((resolve, reject) => {
+                const id = ++workerMsgId;
+                workerCbs.set(id, { resolve, reject });
+                semanticWorker.postMessage({ type: 'embed', id, text });
+            });
         }
 
         async function initSemanticSearch() {
@@ -1592,23 +1592,58 @@
             try {
                 updateSemanticToast('🔍 Загрузка модели поиска…');
 
-                const tf = await ensureTransformers();
-                if (!tf) throw new Error('transformers.js not available');
-                const { pipeline } = tf;
+                // Воркер как blob — не нужен отдельный файл
+                const workerSrc = `
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2/dist/transformers.min.js';
+let pipe = null;
+onmessage = async ({ data }) => {
+    if (data.type === 'init') {
+        try {
+            pipe = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2', {
+                progress_callback: p => postMessage({ type: 'progress', p })
+            });
+            postMessage({ type: 'ready' });
+        } catch(e) { postMessage({ type: 'error', msg: e.message }); }
+    } else if (data.type === 'embed') {
+        try {
+            const out = await pipe(data.text, { pooling: 'mean', normalize: true });
+            postMessage({ type: 'emb', id: data.id, emb: Array.from(out.data) });
+        } catch(e) { postMessage({ type: 'error', id: data.id, msg: e.message }); }
+    }
+};`;
+                const blob = new Blob([workerSrc], { type: 'text/javascript' });
+                semanticWorker = new Worker(URL.createObjectURL(blob), { type: 'module' });
 
-                semanticPipeline = await pipeline(
-                    'feature-extraction',
-                    'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
-                    {
-                        progress_callback: (p) => {
-                            if (p.status === 'progress' && p.progress != null) {
+                await new Promise((resolve, reject) => {
+                    semanticWorker.onmessage = ({ data }) => {
+                        if (data.type === 'ready') { resolve(); }
+                        else if (data.type === 'progress') {
+                            const p = data.p;
+                            if (p.status === 'progress' && p.progress != null)
                                 updateSemanticToast(`🔍 Загрузка модели: ${Math.round(p.progress)}%`);
-                            } else if (p.status === 'initiate') {
+                            else if (p.status === 'initiate')
                                 updateSemanticToast(`🔍 Загрузка: ${p.file || ''}…`);
-                            }
                         }
+                        else if (data.type === 'error') { reject(new Error(data.msg)); }
+                        else if (data.type === 'emb') {
+                            const cb = workerCbs.get(data.id);
+                            if (cb) { workerCbs.delete(data.id); cb.resolve(data.emb); }
+                        }
+                    };
+                    semanticWorker.onerror = e => reject(e);
+                    semanticWorker.postMessage({ type: 'init' });
+                });
+
+                // После инициализации все embed-запросы идут через onmessage воркера
+                semanticWorker.onmessage = ({ data }) => {
+                    if (data.type === 'emb') {
+                        const cb = workerCbs.get(data.id);
+                        if (cb) { workerCbs.delete(data.id); cb.resolve(data.emb); }
+                    } else if (data.type === 'error') {
+                        const cb = workerCbs.get(data.id);
+                        if (cb) { workerCbs.delete(data.id); cb.reject(new Error(data.msg)); }
                     }
-                );
+                };
 
                 semanticIndex = [];
                 semanticReady = true;
@@ -1624,8 +1659,7 @@
 
         // Стриминговый поиск: индексирует страницы по одной и сразу показывает результаты
         async function streamSemanticSearch(query, resultsContainer) {
-            const out = await semanticPipeline(query, { pooling: 'mean', normalize: true });
-            const qEmb = Array.from(out.data);
+            const qEmb = await workerEmbed(query);
 
             let totalFound = 0;
             const pages = PAGES.filter(p => p.file !== 'settings');
@@ -1644,9 +1678,7 @@
                 const pageItems = [];
 
                 for (const chunk of chunks) {
-                    await new Promise(r => setTimeout(r, 0));
-                    const o = await semanticPipeline(chunk, { pooling: 'mean', normalize: true });
-                    const emb = Array.from(o.data);
+                    const emb = await workerEmbed(chunk);
                     const needle = chunk.slice(0, 40).toLowerCase();
                     const pos = raw.toLowerCase().indexOf(needle);
                     const breadcrumb = pos >= 0 ? getBreadcrumbAtPos(raw, pos) : '';
@@ -1694,9 +1726,8 @@
         }
 
         async function performSemanticSearch(query) {
-            if (!semanticReady || !semanticPipeline || !semanticIndex.length) return null;
-            const out = await semanticPipeline(query, { pooling: 'mean', normalize: true });
-            const qEmb = Array.from(out.data);
+            if (!semanticReady || !semanticIndex.length) return null;
+            const qEmb = await workerEmbed(query);
 
             const scored = semanticIndex
                 .map(item => ({ ...item, score: cosineSim(qEmb, item.emb) }))
