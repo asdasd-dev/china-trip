@@ -340,6 +340,11 @@
             z-index: 300;
             transition: transform 0.3s ease;
             pointer-events: none;
+            cursor: default;
+        }
+        #toast.clickable {
+            pointer-events: auto;
+            cursor: pointer;
         }
         html[data-theme="dark"] #toast { background: #e6edf3; color: #0D1117; }
         #toast.visible { transform: translateX(-50%) translateY(0); }
@@ -368,7 +373,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2048';
+        const APP_VERSION = '20260422-2058';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -818,11 +823,25 @@
         }
 
         const toast = document.getElementById('toast');
-        function showToast(msg) {
+        let toastTimer = null;
+        function showToast(msg, onClick) {
             toast.textContent = msg;
             toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), 5000);
+            toast.classList.toggle('clickable', !!onClick);
+            toast._onClick = onClick || null;
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('visible', 'clickable');
+                toast._onClick = null;
+            }, 5000);
         }
+        toast.addEventListener('click', () => {
+            if (toast._onClick) {
+                toast._onClick();
+                toast.classList.remove('visible', 'clickable');
+                if (toastTimer) clearTimeout(toastTimer);
+            }
+        });
 
         function checkVersion() {
             fetch('./version.txt?t=' + Date.now(), { cache: 'no-store' })
@@ -833,7 +852,7 @@
                         const settingsBtn = nav.querySelector('[data-file="settings"]');
                         if (settingsBtn) settingsBtn.classList.add('has-update');
                         if (currentPage === 'settings') loadPage('settings', { skipSave: true });
-                        showToast('🔔 Доступна новая версия');
+                        showToast('🔔 Доступна новая версия', () => loadPage('settings'));
                     }
                 })
                 .catch(() => {});
