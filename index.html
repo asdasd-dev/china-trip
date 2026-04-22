@@ -542,7 +542,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0100';
+        const APP_VERSION = '20260423-0115';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -952,15 +952,20 @@
                 });
 
                 if (opts.searchQuery) {
+                    scroller.scrollTop = 0;
                     requestAnimationFrame(() => {
                         const re = new RegExp(escapeRe(opts.searchQuery), 'i');
                         const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                        let found = null;
                         let node;
                         while ((node = walker.nextNode())) {
-                            if (re.test(node.textContent)) {
-                                node.parentElement.scrollIntoView({ behavior: 'instant', block: 'center' });
-                                break;
-                            }
+                            if (re.test(node.textContent)) { found = node.parentElement; break; }
+                        }
+                        if (found) {
+                            const elTop = found.getBoundingClientRect().top
+                                - scroller.getBoundingClientRect().top
+                                + scroller.scrollTop;
+                            scroller.scrollTop = Math.max(0, elTop - 80);
                         }
                         updateStickyHeader();
                     });
