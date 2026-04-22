@@ -310,14 +310,27 @@
             color: #000;
             border-color: transparent;
         }
-        .city-nav button.today-btn {
-            background: var(--link);
-            color: #fff;
-            border-color: transparent;
-            font-weight: 600;
+        @keyframes today-dot-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.75); }
         }
-        html[data-theme="dark"] .city-nav button.today-btn {
-            color: #000;
+        .city-nav button.today-btn {
+            background: color-mix(in srgb, var(--link) 10%, transparent);
+            color: var(--link);
+            border-color: color-mix(in srgb, var(--link) 40%, transparent);
+            font-weight: 600;
+            gap: 5px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .city-nav button.today-btn::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--link);
+            flex-shrink: 0;
+            animation: today-dot-pulse 2s ease-in-out infinite;
         }
         #today-toast {
             position: fixed;
@@ -589,7 +602,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2130';
+        const APP_VERSION = '20260422-2132';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -926,7 +939,7 @@
                             scroller.scrollTop = Math.max(0, elTop - 80);
                         };
                         const todayBtn = document.createElement('button');
-                        todayBtn.textContent = '📍 Сегодня';
+                        todayBtn.textContent = 'Сегодня';
                         todayBtn.className = 'today-btn';
                         todayBtn.addEventListener('click', scrollToToday);
                         cityNav.appendChild(todayBtn);
