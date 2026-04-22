@@ -13,7 +13,7 @@
         })();
     </script>
     <style>
-        html, body { overflow-x: clip; }
+        html, body { overflow-x: clip; touch-action: pan-x pan-y; }
         :root {
             --nav-h: 62px;
             /* Light: warm cream */
@@ -72,7 +72,7 @@
             --toggle-bg: rgba(255,255,255,0.08);
             --toggle-border: rgba(255,255,255,0.12);
         }
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; touch-action: pan-x pan-y; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
@@ -513,15 +513,11 @@
             }, 150);
         }, { passive: true });
 
-        // ── Disable pinch zoom (iOS Safari ignores viewport user-scalable=no) ──
-        document.addEventListener('touchstart', e => {
-            if (e.touches.length > 1) e.preventDefault();
-        }, { passive: false });
-        document.addEventListener('touchmove', e => {
-            if (e.touches.length > 1) e.preventDefault();
-        }, { passive: false });
-        document.addEventListener('gesturestart', e => e.preventDefault());
-        document.addEventListener('gesturechange', e => e.preventDefault());
+        // ── Disable pinch/double-tap zoom ──
+        // touch-action: pan-x pan-y in CSS handles most browsers;
+        // gesturestart/change covers Safari's proprietary gesture system
+        document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
+        document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
 
         window.addEventListener('popstate', e => {
             const state = e.state;
