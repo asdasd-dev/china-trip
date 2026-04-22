@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '2.0';
+        const APP_VERSION = '2.1';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1926,7 +1926,7 @@ onmessage = async ({ data }) => {
                 } else if (modelFiles.length > 0) {
                     el.textContent = '⚠️ Модель скачана частично (' + modelFiles.length + ' из 5 файлов)';
                 } else {
-                    el.textContent = '📥 Модель не скачана — запустите индексацию';
+                    el.textContent = '📥 Модель не скачана — загрузится автоматически при индексации (~50 МБ)';
                 }
             } catch(e) {
                 el.textContent = '❓ Статус модели недоступен';
