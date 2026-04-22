@@ -324,15 +324,16 @@
             nav.appendChild(btn);
         });
 
-        async function loadState() {
-            try {
-                const res = await fetch(DB_URL + '/checkboxes.json');
-                return (await res.json()) || {};
-            } catch { return {}; }
-        }
+        // Checkbox state: loaded once, kept in memory
+        let checkboxState = {};
+        fetch(DB_URL + '/checkboxes.json')
+            .then(r => r.json())
+            .then(d => { if (d) checkboxState = d; })
+            .catch(() => {});
 
-        function saveCheckbox(idx, checked) {
-            fetch(DB_URL + '/checkboxes/' + idx + '.json', {
+        function saveCheckbox(key, checked) {
+            checkboxState[key] = checked; // update local copy immediately
+            fetch(DB_URL + '/checkboxes/' + key + '.json', {
                 method: 'PUT',
                 body: JSON.stringify(checked)
             });
@@ -357,10 +358,10 @@
             window.scrollTo(0, 0);
 
             try {
-                const fetchMd = pageCache.has(file)
-                    ? Promise.resolve(pageCache.get(file))
-                    : fetch(BASE + file).then(r => r.text()).then(t => { pageCache.set(file, t); return t; });
-                const [mdText, state] = await Promise.all([fetchMd, loadState()]);
+                const mdText = pageCache.has(file)
+                    ? pageCache.get(file)
+                    : await fetch(BASE + file).then(r => r.text()).then(t => { pageCache.set(file, t); return t; });
+                const state = checkboxState;
 
                 marked.setOptions({ breaks: true, gfm: true });
                 let html = marked.parse(mdText);
