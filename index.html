@@ -1,16 +1,75 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Китайские делишки</title>
     <link rel="icon" href="https://cdn-icons-png.flaticon.com/256/4545/4545114.png">
+    <script>
+        // Apply theme before paint to avoid flash
+        (function() {
+            var t = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
     <style>
         :root {
             --nav-h: 58px;
-            --nav-bg: #161B22;
+            /* Light: warm cream */
+            --bg: #FEFBF6;
+            --content-bg: #fff;
+            --text: #1a1a1a;
+            --text-muted: #6a737d;
+            --border: #F0DCC0;
+            --h-border: #f0dcc0;
+            --link: #C0392B;
+            --toc-bg: #FFF7ED;
+            --toc-title: #92400E;
+            --toc-link: #C0392B;
+            --toc-divider: #f5dfc0;
+            --code-bg: #FFF7ED;
+            --th-bg: #FFF7ED;
+            --blockquote-border: #F0DCC0;
+            --blockquote-text: #8c5a3a;
+            --shadow: rgba(0,0,0,0.06);
+            --nav-bg: #fff;
+            --nav-border: #F0DCC0;
+            --nav-accent: #C0392B;
+            --scroll-bg: #C0392B;
+            --city-btn-bg: #FFF7ED;
+            --city-btn-border: #F0DCC0;
+            --city-btn-text: #1a1a1a;
+            --city-btn-active-bg: #C0392B;
+            --toggle-bg: rgba(0,0,0,0.06);
+            --toggle-border: rgba(0,0,0,0.08);
+        }
+        html[data-theme="dark"] {
+            --bg: #0D1117;
+            --content-bg: #0D1117;
+            --text: #e6edf3;
+            --text-muted: #7d8590;
+            --border: #30363D;
+            --h-border: #21262D;
+            --link: #58a6ff;
+            --toc-bg: #161B22;
+            --toc-title: #7d8590;
+            --toc-link: #58a6ff;
+            --toc-divider: #21262D;
+            --code-bg: #161B22;
+            --th-bg: #161B22;
+            --blockquote-border: #30363D;
+            --blockquote-text: #7d8590;
+            --shadow: rgba(0,0,0,0.4);
+            --nav-bg: #010409;
             --nav-border: #21262D;
             --nav-accent: #F0C040;
+            --scroll-bg: #30363D;
+            --city-btn-bg: #161B22;
+            --city-btn-border: #30363D;
+            --city-btn-text: #e6edf3;
+            --city-btn-active-bg: #F0C040;
+            --toggle-bg: rgba(255,255,255,0.08);
+            --toggle-border: rgba(255,255,255,0.12);
         }
         * { box-sizing: border-box; }
         body {
@@ -18,9 +77,10 @@
             line-height: 1.6;
             margin: 0 auto;
             padding: 12px 12px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
-            background: #f8f9fa;
-            color: #24292e;
+            background: var(--bg);
+            color: var(--text);
             font-size: 15px;
+            transition: background 0.2s, color 0.2s;
         }
         nav {
             position: fixed;
@@ -34,6 +94,7 @@
             border-top: 1px solid var(--nav-border);
             padding: 6px 0 env(safe-area-inset-bottom, 10px);
             display: flex;
+            transition: background 0.2s, border-color 0.2s;
         }
         nav button {
             flex: 1;
@@ -63,25 +124,26 @@
         nav button.active .tab-icon { opacity: 1; }
         nav button.active .tab-dot { background: var(--nav-accent); }
         #content {
-            background: #fff;
+            background: var(--content-bg);
             padding: 16px 14px;
             border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 3px var(--shadow);
             margin-top: 0;
+            transition: background 0.2s;
         }
         h1, h2, h3, a[id] { scroll-margin-top: 16px; }
-        h1 { border-bottom: 2px solid #e1e4e8; padding-bottom: 10px; font-size: 1.5em; }
-        h2 { margin-top: 28px; border-bottom: 1px solid #e1e4e8; padding-bottom: 6px; font-size: 1.25em; }
+        h1 { border-bottom: 2px solid var(--h-border); padding-bottom: 10px; font-size: 1.5em; }
+        h2 { margin-top: 28px; border-bottom: 1px solid var(--h-border); padding-bottom: 6px; font-size: 1.25em; }
         h3 { margin-top: 20px; font-size: 1.1em; }
         table { border-collapse: collapse; width: 100%; margin: 12px 0; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        th, td { border: 1px solid #dfe2e5; padding: 6px 8px; text-align: left; font-size: 13px; }
+        th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; font-size: 13px; }
         td.num { white-space: nowrap; text-align: right; }
-        th { background: #f6f8fa; }
-        code { background: #f6f8fa; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
-        pre { background: #f6f8fa; padding: 12px; border-radius: 8px; overflow-x: auto; }
+        th { background: var(--th-bg); }
+        code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+        pre { background: var(--code-bg); padding: 12px; border-radius: 8px; overflow-x: auto; }
         pre code { background: none; padding: 0; }
-        blockquote { border-left: 4px solid #dfe2e5; margin: 12px 0; padding: 4px 12px; color: #6a737d; }
-        a { color: #0366d6; text-decoration: none; }
+        blockquote { border-left: 4px solid var(--blockquote-border); margin: 12px 0; padding: 4px 12px; color: var(--blockquote-text); }
+        a { color: var(--link); text-decoration: none; }
         a:hover { text-decoration: underline; }
         img { max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; }
         ul, ol { padding-left: 20px; }
@@ -96,7 +158,7 @@
             width: 18px;
             height: 18px;
             cursor: pointer;
-            accent-color: #2ea44f;
+            accent-color: var(--nav-accent);
         }
         .task-list-item.checked > span.task-text {
             text-decoration: line-through;
@@ -105,15 +167,15 @@
         #loading {
             text-align: center;
             padding: 60px 20px;
-            color: #6a737d;
+            color: var(--text-muted);
             font-size: 1.1em;
         }
         .spinner {
             display: inline-block;
             width: 24px;
             height: 24px;
-            border: 3px solid #e1e4e8;
-            border-top-color: #0366d6;
+            border: 3px solid var(--border);
+            border-top-color: var(--link);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin-bottom: 12px;
@@ -127,19 +189,25 @@
         }
         .city-nav button {
             padding: 6px 16px;
-            border: 1px solid #d1d5da;
+            border: 1px solid var(--city-btn-border);
             border-radius: 20px;
-            background: #f6f8fa;
-            color: #24292e;
+            background: var(--city-btn-bg);
+            color: var(--city-btn-text);
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s, color 0.15s;
         }
-        .city-nav button:active { background: #0366d6; color: #fff; border-color: #0366d6; }
+        .city-nav button:active {
+            background: var(--city-btn-active-bg);
+            color: #fff;
+            border-color: var(--city-btn-active-bg);
+        }
+        html[data-theme="dark"] .city-nav button:active { color: #000; }
         .toc-block {
-            background: #f6f8fa;
-            border: 1px solid #e1e4e8;
+            background: var(--toc-bg);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 10px 14px;
             margin-bottom: 16px;
@@ -147,7 +215,7 @@
         .toc-block .toc-title {
             font-weight: 600;
             font-size: 0.8em;
-            color: #586069;
+            color: var(--toc-title);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 6px;
@@ -155,14 +223,14 @@
         .toc-block a {
             display: block;
             padding: 3px 0;
-            color: #0366d6;
+            color: var(--toc-link);
             font-size: 0.85em;
             text-decoration: none;
-            border-bottom: 1px solid #eaecef;
+            border-bottom: 1px solid var(--toc-divider);
         }
         .toc-block a:last-child { border-bottom: none; }
-        .toc-block a:active { color: #24292e; }
-        a.cross-link { color: #0366d6; text-decoration: underline dotted; cursor: pointer; }
+        .toc-block a:active { opacity: 0.7; }
+        a.cross-link { color: var(--link); text-decoration: underline dotted; cursor: pointer; }
         #scroll-top {
             position: fixed;
             bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
@@ -171,7 +239,7 @@
             height: 40px;
             border-radius: 50%;
             border: none;
-            background: #24292e;
+            background: var(--scroll-bg);
             color: #fff;
             font-size: 0;
             line-height: 1;
@@ -179,10 +247,10 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px var(--shadow);
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.2s;
+            transition: opacity 0.2s, background 0.2s;
             -webkit-tap-highlight-color: transparent;
             z-index: 1000;
         }
@@ -196,8 +264,33 @@
             transform: rotate(45deg);
             margin-top: 4px;
         }
+        html[data-theme="dark"] #scroll-top::after {
+            border-top-color: #e6edf3;
+            border-left-color: #e6edf3;
+        }
         #scroll-top.visible { opacity: 1; pointer-events: auto; }
-        #scroll-top:active { background: #0366d6; }
+        /* Theme toggle button */
+        #theme-toggle {
+            position: fixed;
+            top: 12px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--toggle-border);
+            background: var(--toggle-bg);
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.2s, border-color 0.2s;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
         @media (min-width: 640px) {
             body { padding: 20px 20px calc(var(--nav-h) + 20px); max-width: 900px; font-size: 16px; }
             #content { padding: 32px 40px; border-radius: 12px; }
@@ -207,13 +300,15 @@
             th, td { padding: 8px 12px; white-space: normal; font-size: 14px; }
             table { display: table; }
             #scroll-top { bottom: calc(var(--nav-h) + 24px); left: 24px; width: 44px; height: 44px; }
-            #scroll-top:hover { background: #0366d6; }
+            #scroll-top:hover { opacity: 0.85; }
+            #theme-toggle { top: 16px; right: 24px; }
         }
     </style>
 </head>
 <body>
     <nav id="nav"></nav>
     <button id="scroll-top"></button>
+    <button id="theme-toggle" title="Переключить тему"></button>
     <div id="content">
         <div id="loading"><div class="spinner"></div><div>Loading...</div></div>
     </div>
@@ -232,7 +327,19 @@
 
         let currentPage = PAGES[0].file;
 
-        // Build nav
+        // ── Theme toggle ──
+        const themeToggle = document.getElementById('theme-toggle');
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', theme);
+        }
+        applyTheme(localStorage.getItem('theme') || 'light');
+        themeToggle.addEventListener('click', () => {
+            applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        });
+
+        // ── Build nav ──
         const nav = document.getElementById('nav');
         PAGES.forEach(p => {
             const btn = document.createElement('button');
@@ -259,16 +366,13 @@
         }
 
         async function loadPage(file, opts = {}) {
-            // Save scroll position of current page before leaving
             if (!opts.popstate && !opts.skipSave && currentPage) {
                 history.replaceState({ file: currentPage, scrollY: window.scrollY }, '', '#' + currentPage.replace('.md', ''));
             }
             currentPage = file;
-            // Update nav
             nav.querySelectorAll('button').forEach(b => {
                 b.classList.toggle('active', b.dataset.file === file);
             });
-            // Push new state (unless triggered by popstate)
             if (!opts.popstate) {
                 history.pushState({ file, scrollY: 0 }, '', '#' + file.replace('.md', ''));
             }
@@ -286,7 +390,6 @@
                 marked.setOptions({ breaks: true, gfm: true });
                 let html = marked.parse(mdText);
 
-                // Interactive checkboxes
                 let idx = 0;
                 html = html.replace(/<li><input\s[^>]*type="checkbox"[^>]*>\s*/gi, (match) => {
                     const key = file.replace('.md', '') + '_' + idx;
@@ -297,21 +400,17 @@
 
                 el.innerHTML = html;
 
-                // Collect all h1 and h2 with their preceding <a id=""> anchors
                 const h1s = Array.from(el.querySelectorAll('h1'));
                 const h2s = Array.from(el.querySelectorAll('h2'));
 
-                // Helper: find the <a id="..."> right before a heading
                 function getAnchorId(heading) {
                     let prev = heading.previousElementSibling;
                     if (prev && prev.tagName === 'A' && prev.id) return prev.id;
-                    // Check two levels up (might be separated by <p> etc)
                     if (prev) { prev = prev.previousElementSibling; if (prev && prev.tagName === 'A' && prev.id) return prev.id; }
                     return null;
                 }
 
                 if (h1s.length > 1) {
-                    // City nav
                     const cityNav = document.createElement('div');
                     cityNav.className = 'city-nav';
                     h1s.forEach(h1 => {
@@ -322,10 +421,8 @@
                     });
                     el.insertBefore(cityNav, el.firstChild);
 
-                    // Per-city mini-TOCs
                     h1s.forEach((h1, cityIdx) => {
                         const nextH1 = h1s[cityIdx + 1];
-                        // Collect h2s between this h1 and next h1
                         const cityH2s = h2s.filter(h2 => {
                             const after = h1.compareDocumentPosition(h2) & Node.DOCUMENT_POSITION_FOLLOWING;
                             const before = !nextH1 || (nextH1.compareDocumentPosition(h2) & Node.DOCUMENT_POSITION_PRECEDING);
@@ -346,7 +443,6 @@
                             });
                             toc.appendChild(a);
                         });
-                        // Insert TOC after h1 (and after any info block right after h1)
                         let insertAfter = h1.nextElementSibling;
                         while (insertAfter && insertAfter.tagName !== 'H2' && insertAfter.tagName !== 'A' && insertAfter.tagName !== 'H1') {
                             insertAfter = insertAfter.nextElementSibling;
@@ -355,7 +451,6 @@
                         else h1.after(toc);
                     });
                 } else {
-                    // Non-route pages: simple TOC from h2
                     if (h2s.length > 2) {
                         const toc = document.createElement('div');
                         toc.className = 'toc-block';
@@ -370,14 +465,12 @@
                     }
                 }
 
-                // Handle cross-page links (href="places.md#id" or "plan.md#id")
                 el.querySelectorAll('a[href*=".md#"]').forEach(a => {
                     a.classList.add('cross-link');
                     a.addEventListener('click', e => {
                         e.preventDefault();
                         const href = a.getAttribute('href');
                         const [targetFile, targetId] = href.split('#');
-                        // Save current scroll BEFORE navigating
                         history.replaceState({ file: currentPage, scrollY: window.scrollY }, '', '#' + currentPage.replace('.md', ''));
                         loadPage(targetFile, { skipSave: true }).then(() => {
                             setTimeout(() => {
@@ -388,7 +481,6 @@
                     });
                 });
 
-                // Mark numeric cells with .num class
                 el.querySelectorAll('td').forEach(td => {
                     if (/^[\s\*]*[\d¥₽\s,.—–]+[\s\*]*$/.test(td.textContent.trim())) {
                         td.classList.add('num');
@@ -415,14 +507,12 @@
             }
         }
 
-        // Scroll to top
         const scrollBtn = document.getElementById('scroll-top');
         window.addEventListener('scroll', () => {
             scrollBtn.classList.toggle('visible', window.scrollY > 400);
         });
         scrollBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-        // Back/forward navigation
         window.addEventListener('popstate', e => {
             const state = e.state;
             if (state && state.file) {
@@ -432,7 +522,6 @@
             }
         });
 
-        // Load from hash or default
         const hash = location.hash.slice(1);
         const initial = PAGES.find(p => p.file.replace('.md', '') === hash);
         const initialFile = initial ? initial.file : PAGES[0].file;
