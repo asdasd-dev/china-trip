@@ -293,7 +293,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-1725';
+        const APP_VERSION = '20260422-1739';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -369,10 +369,48 @@
             if (file === 'settings') {
                 const v = APP_VERSION;
                 const y = v.slice(0,4), mo = v.slice(4,6), d = v.slice(6,8), h = v.slice(9,11), mi = v.slice(11,13);
+                const changelog = [
+                    { date: '22.04.2026', items: [
+                        'PWA: офлайн-кэш, установка на домашний экран',
+                        'Блокировка пинч-зума на iOS — в том числе во время инерционного скролла',
+                        'Тёмная тема и адаптированная навигация',
+                        'Кэш страниц — переключение вкладок без повторных запросов',
+                        'Запоминание позиции скролла на каждой вкладке',
+                        'Тёмный таб-бар с иконками и золотым индикатором',
+                    ]},
+                    { date: 'Ранее', items: [
+                        'Кросс-ссылки между страницами маршрута и мест',
+                        'Оглавление по городам с быстрой навигацией',
+                        'Исправлен бюджет: дубли, ошибки в математике, расписание',
+                        'Адаптивная верстка под мобильные',
+                        'Firebase для синхронизации чекбоксов между устройствами',
+                        'Разбивка на 5 вкладок: маршрут, чек-листы, бюджет, инфо, места',
+                        'Базовый просмотрщик с интерактивными чекбоксами',
+                    ]},
+                ];
+                const clHtml = changelog.map(g =>
+                    '<h3 style="margin-top:20px;margin-bottom:8px;color:var(--text-muted);font-size:0.85em;text-transform:uppercase;letter-spacing:0.5px">' + g.date + '</h3>'
+                    + '<ul style="margin:0;padding-left:20px">'
+                    + g.items.map(i => '<li style="margin-bottom:6px">' + i + '</li>').join('')
+                    + '</ul>'
+                ).join('');
                 el.innerHTML = '<h1>О приложении</h1>'
-                    + '<p style="color:var(--text-muted);margin-top:-8px">Рис 🍚</p>'
-                    + '<table><tr><th>Версия</th><td>' + v + '</td></tr>'
-                    + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>';
+                    + '<div class="city-nav" id="settings-tabs">'
+                    + '<button class="active" data-tab="info">Версия</button>'
+                    + '<button data-tab="changelog">Ченжлог</button>'
+                    + '</div>'
+                    + '<div id="settings-info">'
+                    + '<table style="margin-top:12px"><tr><th>Версия</th><td>' + v + '</td></tr>'
+                    + '<tr><th>Обновлено</th><td>' + d + '.' + mo + '.' + y + ' ' + h + ':' + mi + '</td></tr></table>'
+                    + '</div>'
+                    + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>';
+                el.querySelector('#settings-tabs').addEventListener('click', e => {
+                    const btn = e.target.closest('button');
+                    if (!btn) return;
+                    el.querySelectorAll('#settings-tabs button').forEach(b => b.classList.toggle('active', b === btn));
+                    el.querySelector('#settings-info').style.display = btn.dataset.tab === 'info' ? '' : 'none';
+                    el.querySelector('#settings-changelog').style.display = btn.dataset.tab === 'changelog' ? '' : 'none';
+                });
                 scroller.scrollTop = tabScrollY.get(file) || 0;
                 return;
             }
