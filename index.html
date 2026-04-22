@@ -13,7 +13,7 @@
         })();
     </script>
     <style>
-        html { overflow-x: hidden; }
+        html, body { overflow-x: clip; }
         :root {
             --nav-h: 62px;
             /* Light: warm cream */
@@ -93,11 +93,10 @@
             z-index: 100;
             background: var(--nav-bg);
             border-top: 1px solid var(--nav-border);
-            /* safe-area covers iPhone home indicator;
-               extra 8px covers browser nav bar on Android/iOS */
-            padding: 6px 0 calc(env(safe-area-inset-bottom, 0px) + 8px);
+            padding: 6px 0 env(safe-area-inset-bottom, 8px);
             display: flex;
             transition: background 0.2s, border-color 0.2s;
+            will-change: transform;
         }
         nav button {
             flex: 1;
@@ -290,9 +289,14 @@
             align-items: center;
             justify-content: center;
             -webkit-tap-highlight-color: transparent;
-            transition: background 0.2s, border-color 0.2s;
+            transition: background 0.2s, border-color 0.2s, opacity 0.2s;
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
+            opacity: 1;
+        }
+        #theme-toggle.hidden {
+            opacity: 0;
+            pointer-events: none;
         }
         @media (min-width: 640px) {
             body { padding: 20px 20px calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 24px); max-width: 900px; font-size: 16px; }
@@ -510,10 +514,26 @@
             }
         }
 
+        // ── visualViewport: keep nav above browser chrome on mobile ──
+        if (window.visualViewport) {
+            const updateNav = () => {
+                const vv = window.visualViewport;
+                const offset = window.innerHeight - vv.height - vv.offsetTop;
+                nav.style.transform = offset > 0 ? 'translateY(' + (-Math.round(offset)) + 'px)' : '';
+            };
+            window.visualViewport.addEventListener('resize', updateNav);
+            window.visualViewport.addEventListener('scroll', updateNav);
+        }
+
+        // ── Scroll-top button + theme toggle hide on scroll ──
         const scrollBtn = document.getElementById('scroll-top');
+        let lastScrollY = 0;
         window.addEventListener('scroll', () => {
-            scrollBtn.classList.toggle('visible', window.scrollY > 400);
-        });
+            const y = window.scrollY;
+            scrollBtn.classList.toggle('visible', y > 400);
+            themeToggle.classList.toggle('hidden', y > 30);
+            lastScrollY = y;
+        }, { passive: true });
         scrollBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
         window.addEventListener('popstate', e => {
