@@ -13,15 +13,6 @@ const PRECACHE = [
     './manifest.json',
 ];
 
-// Файлы модели на GitHub Releases (доступен в Китае, в отличие от HuggingFace)
-const MODEL_RELEASE = 'https://github.com/asdasd-dev/china-trip/releases/download/model-v1/';
-
-// Маппинг: transformers.js просит huggingface.co → мы отдаём с GitHub
-function toGithubUrl(hfUrl) {
-    const filename = hfUrl.pathname.split('/').pop();
-    return MODEL_RELEASE + filename;
-}
-
 self.addEventListener('install', e => {
     e.waitUntil(
         caches.open(CACHE)
@@ -45,15 +36,15 @@ self.addEventListener('fetch', e => {
     // Не кэшируем Firebase, version.txt и не-GET запросы
     if (url.hostname.includes('firebasedatabase') || url.pathname.endsWith('version.txt') || e.request.method !== 'GET') return;
 
-    // Запросы к HuggingFace → перехватываем, кэшируем в MODEL_CACHE
-    // transformers.js обращается к hf за файлами модели — редиректим на GitHub
+    // Запросы к HuggingFace (файлы модели) → кэшируем в отдельный MODEL_CACHE
+    // Кэш персистентный: переживает обновления приложения, не чистится hardReload
+    // До поездки в Китай модель качается с HF и оседает в кэше, в Китае SW отдаёт из кэша
     if (url.hostname.includes('huggingface.co')) {
         e.respondWith(
             caches.open(MODEL_CACHE).then(cache =>
                 cache.match(e.request).then(cached => {
                     if (cached) return cached;
-                    const githubUrl = toGithubUrl(url);
-                    return fetch(githubUrl).then(r => {
+                    return fetch(e.request).then(r => {
                         if (r.ok) cache.put(e.request, r.clone());
                         return r;
                     });
