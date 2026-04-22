@@ -224,7 +224,7 @@
         blockquote { border-left: 4px solid var(--blockquote-border); margin: 12px 0; padding: 4px 12px; color: var(--blockquote-text); }
         a { color: var(--link); text-decoration: none; }
         a:hover { text-decoration: underline; }
-        img { max-width: 100%; height: auto; border-radius: 8px; margin: 12px 0; }
+        img { max-width: 100%; width: 100%; height: auto; aspect-ratio: 4/3; border-radius: 8px; margin: 12px 0; }
         ul, ol { padding-left: 20px; }
         li { margin: 4px 0; }
         .task-list-item {
@@ -542,7 +542,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0124';
+        const APP_VERSION = '20260423-1500';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -709,6 +709,9 @@
                 const v = APP_VERSION;
                 const y = v.slice(0,4), mo = v.slice(4,6), d = v.slice(6,8), h = v.slice(9,11), mi = v.slice(11,13);
                 const changelog = [
+                    { date: '23.04.2026', items: [
+                        'Поиск по всем страницам: pull-to-search и точный скролл к результату',
+                    ]},
                     { date: '22.04.2026', items: [
                         'Настройки: выбор темы и цветовых акцентов',
                         'Liquid glass навигация, переключатель темы и вкладки страниц',
@@ -953,23 +956,30 @@
 
                 if (opts.searchQuery) {
                     scroller.scrollTop = 0;
-                    requestAnimationFrame(() => {
-                        const re = new RegExp(escapeRe(opts.searchQuery), 'i');
-                        // Ищем по textContent блочных элементов — надёжнее чем text nodes,
-                        // т.к. слово может быть внутри <strong>/<em> и разбито на несколько узлов
+                    const re = new RegExp(escapeRe(opts.searchQuery), 'i');
+                    const scrollToMatch = () => {
                         const blocks = el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote');
-                        let found = null;
                         for (const b of blocks) {
-                            if (re.test(b.textContent)) { found = b; break; }
+                            if (re.test(b.textContent)) {
+                                const elTop = b.getBoundingClientRect().top
+                                    - scroller.getBoundingClientRect().top
+                                    + scroller.scrollTop;
+                                scroller.scrollTop = Math.max(0, elTop - 80);
+                                break;
+                            }
                         }
-                        if (found) {
-                            const elTop = found.getBoundingClientRect().top
-                                - scroller.getBoundingClientRect().top
-                                + scroller.scrollTop;
-                            scroller.scrollTop = Math.max(0, elTop - 80);
-                        }
-                        updateStickyHeader();
-                    });
+                    };
+                    // Ждём загрузки всех картинок страницы — иначе позиции элементов
+                    // ниже незагруженных изображений будут неверными
+                    const imgs = Array.from(el.querySelectorAll('img'));
+                    const ready = imgs.length
+                        ? Promise.all(imgs.map(img => img.complete
+                            ? Promise.resolve()
+                            : new Promise(r => { img.onload = r; img.onerror = r; })))
+                        : Promise.resolve();
+                    ready.then(() => { scrollToMatch(); updateStickyHeader(); });
+                    // Промежуточный скролл без ожидания — чтобы не висеть наверху
+                    requestAnimationFrame(() => { scrollToMatch(); updateStickyHeader(); });
                 } else if (!opts.skipSave) {
                     requestAnimationFrame(() => {
                         scroller.scrollTop = tabScrollY.get(file) || 0;
