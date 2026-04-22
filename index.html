@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-0250';
+        const APP_VERSION = '20260423-0300';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -2121,7 +2121,18 @@ onmessage = async ({ data }) => {
                 + '</div>' + bodyHtml;
             overlay.appendChild(sheet);
             document.body.appendChild(overlay);
-            const close = () => overlay.remove();
+
+            // Блокируем скролл фона
+            const prevOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            overlay.addEventListener('touchmove', e => {
+                if (!sheet.contains(e.target)) e.preventDefault();
+            }, { passive: false });
+
+            const close = () => {
+                document.body.style.overflow = prevOverflow;
+                overlay.remove();
+            };
             sheet.querySelector('#_modal-close').addEventListener('click', close);
             overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
         }
