@@ -226,7 +226,7 @@
         blockquote { border-left: 4px solid var(--blockquote-border); margin: 12px 0; padding: 4px 12px; color: var(--blockquote-text); }
         a { color: var(--link); text-decoration: none; }
         a:hover { text-decoration: underline; }
-        img { max-width: 100%; width: 100%; aspect-ratio: 4/3; object-fit: contain; border-radius: 12px; margin: 12px 0; background: var(--img-bg); border: 1px solid var(--border); }
+        img { display: block; max-width: 100%; width: 100%; aspect-ratio: 4/3; object-fit: contain; border-radius: 12px; margin: 12px 0; background: var(--img-bg); border: 1px solid var(--border); }
         ul, ol { padding-left: 20px; }
         li { margin: 4px 0; }
         .task-list-item {
@@ -544,7 +544,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260423-1530';
+        const APP_VERSION = '20260423-1540';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
