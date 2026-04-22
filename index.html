@@ -673,7 +673,7 @@
     <script>
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '20260422-2253';
+        const APP_VERSION = '20260422-2258';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1605,44 +1605,14 @@
                                 updateSemanticToast(`🔍 Загрузка модели: ${Math.round(p.progress)}%`);
                             } else if (p.status === 'initiate') {
                                 updateSemanticToast(`🔍 Загрузка: ${p.file || ''}…`);
-                            } else if (p.status === 'done') {
-                                updateSemanticToast('🔍 Индексирование…');
                             }
                         }
                     }
                 );
 
-                updateSemanticToast('🔍 Индексирование…');
-
-                // Build index from all pages
                 semanticIndex = [];
-                const pages = PAGES.filter(p => p.file !== 'settings');
-                for (const page of pages) {
-                    let raw = pageCache.get(page.file);
-                    if (!raw) {
-                        try { const r = await fetch(`./${page.file}`); raw = await r.text(); pageCache.set(page.file, raw); }
-                        catch { continue; }
-                    }
-                    const clean = cleanMd(raw);
-                    const chunks = chunkText(clean);
-                    let done = 0;
-                    for (const chunk of chunks) {
-                        // Yield между чанками — даём браузеру обновить UI
-                        await new Promise(r => setTimeout(r, 0));
-                        const out = await semanticPipeline(chunk, { pooling: 'mean', normalize: true });
-                        const emb = Array.from(out.data);
-                        const needle = chunk.slice(0, 40).toLowerCase();
-                        const pos = raw.toLowerCase().indexOf(needle);
-                        const breadcrumb = pos >= 0 ? getBreadcrumbAtPos(raw, pos) : '';
-                        semanticIndex.push({ page, chunk, breadcrumb, emb });
-                        done++;
-                        updateSemanticToast(`🔍 ${page.label}: ${done}/${chunks.length}`);
-                    }
-                }
-
                 semanticReady = true;
                 semanticLoading = false;
-                showToast('✅ Умный поиск готов', null, 3000);
                 return true;
             } catch(e) {
                 console.error('Semantic search init failed:', e);
@@ -1652,8 +1622,79 @@
             }
         }
 
+        // Стриминговый поиск: индексирует страницы по одной и сразу показывает результаты
+        async function streamSemanticSearch(query, resultsContainer) {
+            const out = await semanticPipeline(query, { pooling: 'mean', normalize: true });
+            const qEmb = Array.from(out.data);
+
+            let totalFound = 0;
+            const pages = PAGES.filter(p => p.file !== 'settings');
+
+            for (let pi = 0; pi < pages.length; pi++) {
+                const page = pages[pi];
+                updateSemanticToast(`🔍 ${page.label} (${pi + 1}/${pages.length})…`);
+
+                let raw = pageCache.get(page.file);
+                if (!raw) {
+                    try { const r = await fetch(`./${page.file}`); raw = await r.text(); pageCache.set(page.file, raw); }
+                    catch { continue; }
+                }
+                const clean = cleanMd(raw);
+                const chunks = chunkText(clean);
+                const pageItems = [];
+
+                for (const chunk of chunks) {
+                    await new Promise(r => setTimeout(r, 0));
+                    const o = await semanticPipeline(chunk, { pooling: 'mean', normalize: true });
+                    const emb = Array.from(o.data);
+                    const needle = chunk.slice(0, 40).toLowerCase();
+                    const pos = raw.toLowerCase().indexOf(needle);
+                    const breadcrumb = pos >= 0 ? getBreadcrumbAtPos(raw, pos) : '';
+                    const item = { page, chunk, breadcrumb, emb };
+                    semanticIndex.push(item);
+                    const score = cosineSim(qEmb, emb);
+                    if (score > 0.25) pageItems.push({ ...item, score });
+                }
+
+                if (!pageItems.length) continue;
+                pageItems.sort((a, b) => b.score - a.score);
+
+                // Добавляем результаты этой страницы сразу
+                const group = document.createElement('div');
+                group.className = 'search-page-group';
+                const label = document.createElement('div');
+                label.className = 'search-page-label';
+                label.textContent = page.label;
+                group.appendChild(label);
+
+                pageItems.slice(0, 2).forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result';
+                    if (item.breadcrumb) {
+                        const bc = document.createElement('div');
+                        bc.className = 'search-breadcrumb';
+                        bc.textContent = item.breadcrumb;
+                        div.appendChild(bc);
+                    }
+                    const p = document.createElement('div');
+                    p.className = 'search-snippet';
+                    p.textContent = item.chunk.slice(0, 160) + (item.chunk.length > 160 ? '…' : '');
+                    div.appendChild(p);
+                    div.addEventListener('click', () => {
+                        closeSearch();
+                        loadPage(page.file, { searchQuery: item.chunk.split(/\s+/).slice(0, 4).join(' ') });
+                    });
+                    group.appendChild(div);
+                    totalFound++;
+                });
+                resultsContainer.appendChild(group);
+            }
+
+            return totalFound;
+        }
+
         async function performSemanticSearch(query) {
-            if (!semanticReady || !semanticPipeline) return null;
+            if (!semanticReady || !semanticPipeline || !semanticIndex.length) return null;
             const out = await semanticPipeline(query, { pooling: 'mean', normalize: true });
             const qEmb = Array.from(out.data);
 
@@ -1706,15 +1747,30 @@
         }
 
         async function showSemanticResults(query) {
-            const semFrag = await performSemanticSearch(query);
             searchResults.innerHTML = '';
-            if (semFrag) {
-                const hdr = document.createElement('div');
-                hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
-                hdr.textContent = 'По смыслу';
-                searchResults.appendChild(hdr);
-                searchResults.appendChild(semFrag);
+            const hdr = document.createElement('div');
+            hdr.style.cssText = 'padding:8px 16px 4px;font-size:0.75em;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px';
+            hdr.textContent = 'По смыслу';
+            searchResults.appendChild(hdr);
+
+            let total;
+            if (semanticIndex.length > 0) {
+                // Индекс уже готов — просто ищем
+                const semFrag = await performSemanticSearch(query);
+                if (semFrag) {
+                    searchResults.appendChild(semFrag);
+                    showToast('', null, 1); // скрываем тост
+                    total = 1;
+                } else {
+                    total = 0;
+                }
             } else {
+                // Стриминг: индексируем и показываем по мере готовности
+                total = await streamSemanticSearch(query, searchResults);
+                showToast(total > 0 ? '✅ Умный поиск готов' : '🤷 Ничего не найдено по смыслу', null, 3000);
+            }
+
+            if (total === 0) {
                 searchResults.innerHTML = '<div id="search-hint"><div class="hint-icon">🤷</div>Ничего не найдено</div>';
             }
         }
@@ -1823,20 +1879,11 @@
             btn.textContent = semanticReady ? '🔍 Умный поиск' : '🔍 Умный поиск (загрузить модель)';
             btn.addEventListener('click', async () => {
                 wrap.remove();
-                if (semanticReady) {
-                    await showSemanticResults(query);
-                } else {
-                    searchResults.appendChild(Object.assign(document.createElement('div'), {
-                        style: 'padding:12px 16px;color:var(--text-muted);text-align:center;font-size:0.9em',
-                        textContent: '⏳ Загружаю модель…'
-                    }));
+                if (!semanticReady) {
                     const ok = await initSemanticSearch();
-                    if (ok) {
-                        await showSemanticResults(query);
-                    } else {
-                        showToast('❌ Не удалось загрузить модель', null, 4000);
-                    }
+                    if (!ok) return;
                 }
+                await showSemanticResults(query);
             });
             wrap.appendChild(btn);
             searchResults.appendChild(wrap);
