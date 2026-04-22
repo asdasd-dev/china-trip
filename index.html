@@ -423,6 +423,76 @@
             background: color-mix(in srgb, var(--link) 15%, transparent);
             border-color: var(--link);
         }
+        .phrase-show {
+            flex-shrink: 0;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-size: 14px;
+            transition: background 0.15s;
+        }
+        .phrase-show:active { background: var(--toc-bg); }
+        #chinese-overlay {
+            position: fixed;
+            inset: 0;
+            background: #111;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 32px 24px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        #chinese-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #chinese-overlay .co-zh {
+            font-size: clamp(72px, 20vw, 120px);
+            color: #fff;
+            text-align: center;
+            line-height: 1.1;
+            letter-spacing: 0.05em;
+        }
+        #chinese-overlay .co-pinyin {
+            font-size: clamp(22px, 5vw, 32px);
+            color: #aaa;
+            font-style: italic;
+            text-align: center;
+        }
+        #chinese-overlay .co-ru {
+            font-size: clamp(14px, 3.5vw, 20px);
+            color: #666;
+            text-align: center;
+        }
+        #chinese-overlay .co-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid #444;
+            background: transparent;
+            color: #888;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .toc-block {
             background: var(--toc-bg);
             border: 1px solid var(--border);
@@ -654,6 +724,12 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <span>Поиск</span>
     </div>
+    <div id="chinese-overlay">
+        <button class="co-close">×</button>
+        <div class="co-zh"></div>
+        <div class="co-pinyin"></div>
+        <div class="co-ru"></div>
+    </div>
     <div id="search-overlay">
         <div id="search-bar">
             <input id="search-input" type="search" placeholder="Поиск по всем страницам..." autocomplete="off" autocorrect="off" spellcheck="false">
@@ -701,7 +777,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '2.4';
+        const APP_VERSION = '2.5';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -1724,6 +1800,7 @@
                             <div class="phrase-zh">${zh}</div>
                             <div class="phrase-footer">
                                 <span class="phrase-pinyin">${pinyin}</span>
+                                <button class="phrase-show" title="Показать китайцу">👁</button>
                                 <button class="phrase-play" title="Произношение">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
                                 </button>
@@ -1735,6 +1812,9 @@
                             playBtn.classList.add('speaking');
                             speakChinese(zh);
                             setTimeout(() => playBtn.classList.remove('speaking'), 2000);
+                        });
+                        card.querySelector('.phrase-show').addEventListener('click', () => {
+                            showChineseOverlay(zh, pinyin, ru);
                         });
                         grid.appendChild(card);
                     });
@@ -2286,6 +2366,20 @@ onmessage = async ({ data }) => {
 
         const toast = document.getElementById('toast');
         let toastTimer = null;
+        const chineseOverlay = document.getElementById('chinese-overlay');
+        chineseOverlay.querySelector('.co-close').addEventListener('click', () => chineseOverlay.classList.remove('visible'));
+        chineseOverlay.addEventListener('click', e => { if (e.target === chineseOverlay) chineseOverlay.classList.remove('visible'); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') chineseOverlay.classList.remove('visible'); });
+
+        function showChineseOverlay(zh, pinyin, ru) {
+            chineseOverlay.querySelector('.co-zh').textContent = zh;
+            chineseOverlay.querySelector('.co-pinyin').textContent = pinyin;
+            chineseOverlay.querySelector('.co-ru').textContent = ru;
+            chineseOverlay.classList.add('visible');
+            // Не даём экрану гаснуть пока оверлей открыт
+            if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {});
+        }
+
         function showModal(title, bodyHtml) {
             const overlay = document.createElement('div');
             overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center;padding:0';
