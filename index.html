@@ -701,7 +701,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '1.8';
+        const APP_VERSION = '1.9';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -869,6 +869,7 @@
                 const v = APP_VERSION;
                 const changelog = [
                     { date: '23.04.2026', items: [
+                        'Умный поиск: в карточке показывается статус ML-модели — скачана / частично / не скачана',
                         'Обновление: автоматическое применение новой версии при разворачивании приложения (cache: reload исключает старые файлы)',
                         'Уведомление об обновлении: тост снова показывается при каждом возврате в приложение',
                     ]},
@@ -966,6 +967,9 @@
                     + '<span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;transform:' + (localStorage.getItem('smartSearch') === 'on' ? 'translateX(18px)' : 'translateX(0)') + ';pointer-events:none"></span>'
                     + '</label>'
                     + '</div>'
+                    + '<div style="border-top:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:8px">'
+                    + '<div id="model-status-text" style="font-size:12px;color:var(--text-muted);flex:1">⏳ Проверка модели…</div>'
+                    + '</div>'
                     + '<div style="border-top:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
                     + '<div id="semantic-status-text" style="font-size:13px;color:var(--text-muted)">' + getSemanticStatusText() + '</div>'
                     + '<button id="semantic-index-btn" style="padding:6px 14px;border-radius:6px;border:1.5px solid var(--link);background:transparent;color:var(--link);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0" ' + (semanticIndexing ? 'disabled' : '') + '>' + getSemanticBtnText() + '</button>'
@@ -1034,6 +1038,8 @@
                     this.disabled = true;
                     await hardReload();
                 });
+
+                refreshModelStatus();
 
                 el.querySelector('#semantic-index-btn').addEventListener('click', async function() {
                     if (semanticIndexing) return;
@@ -1884,6 +1890,27 @@ onmessage = async ({ data }) => {
             const btnEl = document.getElementById('semantic-index-btn');
             if (statusEl) statusEl.textContent = getSemanticStatusText();
             if (btnEl) { btnEl.textContent = getSemanticBtnText(); btnEl.disabled = semanticIndexing; }
+        }
+
+        async function refreshModelStatus() {
+            const el = document.getElementById('model-status-text');
+            if (!el) return;
+            try {
+                const cache = await caches.open('china-trip-models');
+                const keys = await cache.keys();
+                // Считаем файлы модели (не считаем лишнее)
+                const modelFiles = keys.filter(r => r.url.includes('huggingface.co'));
+                const hasOnnx = modelFiles.some(r => r.url.includes('model_quantized.onnx'));
+                if (hasOnnx) {
+                    el.textContent = '✅ Модель скачана (' + modelFiles.length + ' файл' + (modelFiles.length === 1 ? '' : modelFiles.length < 5 ? 'а' : 'ов') + ')';
+                } else if (modelFiles.length > 0) {
+                    el.textContent = '⚠️ Модель скачана частично (' + modelFiles.length + ' из 5 файлов)';
+                } else {
+                    el.textContent = '📥 Модель не скачана — запустите индексацию';
+                }
+            } catch(e) {
+                el.textContent = '❓ Статус модели недоступен';
+            }
         }
 
         // Если поиск открыт и есть запрос — дозаписываем семантику в результаты
