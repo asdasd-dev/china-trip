@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.35';
+const APP_VERSION = '3.36';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -1253,18 +1253,20 @@ function updateStickyHeader() {
         ? (tabBarH + 4) + 'px'
         : 'calc(env(safe-area-inset-top, 0px) + 8px)';
 
-    const OFFSET = tabBarH || 56;
+    // Порог = нижний край sticky-header (самокалибрующийся: учитывает таббар + safe-area)
+    const threshold = stickyHeader.getBoundingClientRect().bottom;
     const viewH = window.innerHeight;
 
+    // Скрываем если хоть один заголовок виден в верхней половине экрана (ниже порога)
     const anyVisible = allHeadings.some(h => {
         const top = h.getBoundingClientRect().top;
-        return top >= OFFSET && top < viewH / 2;
+        return top > threshold && top < viewH / 2;
     });
     if (anyVisible) { stickyHeader.classList.remove('visible'); return; }
 
     let curH1 = null, curH2 = null, curH3 = null;
     for (const h of allHeadings) {
-        if (h.getBoundingClientRect().top < OFFSET) {
+        if (h.getBoundingClientRect().top <= threshold) {
             if (h.tagName === 'H1') { curH1 = h; curH2 = null; curH3 = null; }
             else if (h.tagName === 'H2') { curH2 = h; curH3 = null; }
             else { curH3 = h; }
