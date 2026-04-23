@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.24';
+const APP_VERSION = '3.25';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -712,7 +712,6 @@ async function loadPage(file, opts = {}) {
     if (file === 'translate') {
         el.classList.add('translate-mode');
         scroller.style.overflow = 'hidden';
-        translateTab = 'phrases';
         const renderTranslate = async () => {
             const tabBar = `<div style="display:flex;gap:8px;padding:10px 10px 8px;flex-shrink:0">
                 <button data-ttab="phrases" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${translateTab==='phrases'?'var(--link)':'var(--border)'};background:${translateTab==='phrases'?'var(--link)':'transparent'};color:${translateTab==='phrases'?'#fff':'var(--text-muted)'};font-size:13px;cursor:pointer;font-weight:${translateTab==='phrases'?'600':'400'}">Разговорник</button>
