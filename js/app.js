@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.34';
+const APP_VERSION = '3.35';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -1246,12 +1246,19 @@ function updateStickyHeader() {
     const allHeadings = Array.from(el.querySelectorAll('h1, h2, h3'));
     if (h1s.length === 0) { stickyHeader.classList.remove('visible'); return; }
 
-    const OFFSET = 56;
+    // Если есть таббар — рисуемся под ним, иначе на стандартной позиции
+    const tabBar = document.getElementById('page-tabbar');
+    const tabBarH = tabBar ? tabBar.offsetHeight : 0;
+    stickyHeader.style.top = tabBarH
+        ? (tabBarH + 4) + 'px'
+        : 'calc(env(safe-area-inset-top, 0px) + 8px)';
+
+    const OFFSET = tabBarH || 56;
     const viewH = window.innerHeight;
 
     const anyVisible = allHeadings.some(h => {
         const top = h.getBoundingClientRect().top;
-        return top >= OFFSET && top < viewH;
+        return top >= OFFSET && top < viewH / 2;
     });
     if (anyVisible) { stickyHeader.classList.remove('visible'); return; }
 
