@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.28';
+const APP_VERSION = '3.29';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
