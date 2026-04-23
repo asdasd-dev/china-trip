@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.25';
+const APP_VERSION = '3.26';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -487,7 +487,12 @@ toast.addEventListener('click', () => {
 // ── loadPage ─────────────────────────────────────────────────────────────────
 async function loadPage(file, opts = {}) {
     if (!opts.skipSave && currentPage) {
-        tabScrollY.set(currentPage, scroller.scrollTop);
+        const saveKey = currentPage === 'explore' ? 'explore-' + exploreTab : currentPage;
+        tabScrollY.set(saveKey, scroller.scrollTop);
+        if (currentPage === 'translate' && translateTab === 'phrases') {
+            const phrasesEl = document.getElementById('phrases-content');
+            if (phrasesEl) tabScrollY.set('translate-phrases', phrasesEl.scrollTop);
+        }
     }
     currentPage = file;
     nav.querySelectorAll('button').forEach(b => {
@@ -514,7 +519,7 @@ async function loadPage(file, opts = {}) {
                 + 'color:' + (active ? '#fff' : 'var(--text-muted)') + ';'
                 + 'font-size:13px;cursor:pointer;font-weight:' + (active ? '600' : '400');
 
-            const tabBar = '<div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0">'
+            const tabBar = '<div style="display:flex;gap:8px;flex-shrink:0;position:sticky;top:0;z-index:10;background:var(--content-bg);padding-top:8px;padding-bottom:10px;margin-top:-8px">'
                 + '<button data-etab="info" style="' + makeTabStyle(exploreTab === 'info') + '">Инфо</button>'
                 + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + '">Места</button>'
                 + '</div>';
@@ -790,61 +795,6 @@ async function loadPage(file, opts = {}) {
 
     if (file === 'settings') {
         const v = APP_VERSION;
-        const changelog = [
-            { date: '23.04.2026', items: [
-                'Архитектура: JS вынесен в модули (app.js, search.js, phrasebook.js), разговорник как JS-данные',
-                'Поиск: переход из результатов в разговорник скроллит и подсвечивает нужную фразу',
-                'Поиск: фразы из разговорника теперь индексируются и появляются в результатах',
-                'Переводчик: отступы у iframe сверху и снизу',
-                'Разговорник: свайп-поиск работает независимо — активен в разговорнике (с проверкой скролла), отключён в Bing-переводчике',
-                'Настройки: "Обновить приложение" теперь проверяет новый SW, "Очистить кэш" удаляет модель и индекс',
-                'Умный поиск: в карточке показывается статус ML-модели — скачана / частично / не скачана',
-                'Обновление: автоматическое применение новой версии при разворачивании приложения (cache: reload исключает старые файлы)',
-                'Уведомление об обновлении: тост снова показывается при каждом возврате в приложение',
-            ]},
-            { date: '23.04.2026', items: [
-                'Обновление: нативный SW update flow (SKIP_WAITING) — новый SW скачивается один раз в фоне, активируется мгновенно',
-                'Навигация по клику: точное попадание в нужный абзац через n-gram matching по сниппету',
-                'Семантический поиск: повышен порог релевантности — меньше случайных совпадений',
-                'Умный поиск: результаты по смыслу теперь всегда показываются ниже точных результатов',
-                'Умный поиск: подсветка слов запроса в результатах',
-                'Семантический поиск: умный поиск по смыслу с ML-моделью (работает офлайн, кэшируется)',
-                'Хлебные крошки в результатах поиска: показывает раздел и подраздел',
-                'Нечёткий поиск: находит слова с опечатками и похожие формы',
-                'Подсветка найденного текста при переходе к результату',
-                'Разговорник: карточки с транскрипцией и воспроизведением произношения',
-                'Сегодня в маршруте: кнопка для быстрого перехода к текущему дню',
-                'Контейнеры для фото с рамкой и нейтральным фоном',
-                'Поиск по всем страницам: pull-to-search и точный скролл к результату',
-            ]},
-            { date: '22.04.2026', items: [
-                'Настройки: выбор темы и цветовых акцентов',
-                'Liquid glass навигация, переключатель темы и вкладки страниц',
-                'Уведомление о новой версии: тост при возврате в приложение',
-                'Страница настроек с версией, ченжлогом и кнопкой обновления',
-                'PWA: офлайн-кэш, установка на домашний экран',
-                'Блокировка пинч-зума на iOS — в том числе во время инерционного скролла',
-                'Тёмная тема и адаптированная навигация',
-                'Кэш страниц — переключение вкладок без повторных запросов',
-                'Запоминание позиции скролла на каждой вкладке',
-            ]},
-            { date: 'Ранее', items: [
-                'Кросс-ссылки между страницами маршрута и мест',
-                'Оглавление по городам с быстрой навигацией',
-                'Исправлен бюджет: дубли, ошибки в математике, расписание',
-                'Адаптивная верстка под мобильные',
-                'Firebase для синхронизации чекбоксов между устройствами',
-                'Разбивка на 5 вкладок: маршрут, чек-листы, бюджет, инфо, места',
-                'Базовый просмотрщик с интерактивными чекбоксами',
-            ]},
-        ];
-        const clHtml = changelog.map(g =>
-            '<h3 style="margin-top:20px;margin-bottom:8px;color:var(--text-muted);font-size:0.85em;text-transform:uppercase;letter-spacing:0.5px">' + g.date + '</h3>'
-            + '<ul style="margin:0;padding-left:20px">'
-            + g.items.map(i => '<li style="margin-bottom:6px">' + i + '</li>').join('')
-            + '</ul>'
-        ).join('');
-
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
         const currentAccent = localStorage.getItem('accent') || 'red';
 
@@ -868,7 +818,6 @@ async function loadPage(file, opts = {}) {
             + '<div class="city-nav" id="settings-tabs">'
             + '<button class="active" data-tab="info">Версия</button>'
             + '<button data-tab="appearance">Вид</button>'
-            + '<button data-tab="changelog">Ченжлог</button>'
             + '<button data-tab="console">Консоль</button>'
             + '</div>'
 
@@ -906,7 +855,6 @@ async function loadPage(file, opts = {}) {
             + '</div>'
             + '</div>' // закрываем settings-info
 
-            + '<div id="settings-changelog" style="display:none">' + clHtml + '</div>'
             + '<div id="settings-console" style="display:none"><div style="padding:8px 0 4px;display:flex;justify-content:flex-end"><button id="copy-log-btn" style="padding:4px 12px;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer">Скопировать</button></div><div id="console-log" style="font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;padding:4px 0;min-height:200px"></div></div>';
 
         el.querySelector('#settings-tabs').addEventListener('click', e => {
@@ -915,7 +863,6 @@ async function loadPage(file, opts = {}) {
             el.querySelectorAll('#settings-tabs button').forEach(b => b.classList.toggle('active', b === btn));
             el.querySelector('#settings-appearance').style.display = btn.dataset.tab === 'appearance' ? '' : 'none';
             el.querySelector('#settings-info').style.display = btn.dataset.tab === 'info' ? '' : 'none';
-            el.querySelector('#settings-changelog').style.display = btn.dataset.tab === 'changelog' ? '' : 'none';
             el.querySelector('#settings-console').style.display = btn.dataset.tab === 'console' ? '' : 'none';
             if (btn.dataset.tab === 'console') {
                 renderConsoleLog();
