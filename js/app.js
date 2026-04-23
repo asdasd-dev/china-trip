@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.23';
+const APP_VERSION = '3.24';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -693,13 +693,12 @@ async function loadPage(file, opts = {}) {
                         }
                         updateStickyHeader();
                     });
-                } else if (!opts.skipSave) {
+                } else {
+                    // восстанавливаем скролл и при навигации, и при переключении сабтаба
                     requestAnimationFrame(() => {
                         scroller.scrollTop = tabScrollY.get('explore-' + exploreTab) || 0;
                         updateStickyHeader();
                     });
-                } else {
-                    updateStickyHeader();
                 }
             } catch(err) {
                 el.innerHTML += '<p style="color:red">Failed to load: ' + err.message + '</p>';
@@ -726,11 +725,20 @@ async function loadPage(file, opts = {}) {
             } else {
                 el.innerHTML = tabBar + `<div id="phrases-content" style="flex:1;overflow-y:auto;padding:0 10px 16px"></div>`;
                 const phrasesEl = el.querySelector('#phrases-content');
-                // Рендерим из PHRASEBOOK (не из info.md)
                 renderPhrasebookFromData(phrasesEl);
+                // восстанавливаем скролл фразбука
+                requestAnimationFrame(() => {
+                    phrasesEl.scrollTop = tabScrollY.get('translate-phrases') || 0;
+                });
             }
             el.querySelectorAll('[data-ttab]').forEach(btn => {
-                btn.addEventListener('click', () => { translateTab = btn.dataset.ttab; renderTranslate(); });
+                btn.addEventListener('click', () => {
+                    // сохраняем скролл фразбука перед переключением
+                    const prev = document.getElementById('phrases-content');
+                    if (prev) tabScrollY.set('translate-phrases', prev.scrollTop);
+                    translateTab = btn.dataset.ttab;
+                    renderTranslate();
+                });
             });
         };
         el.style.display = 'flex';
