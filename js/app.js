@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.22';
+const APP_VERSION = '3.23';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -519,13 +519,8 @@ async function loadPage(file, opts = {}) {
                 + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + '">Места</button>'
                 + '</div>';
 
-            const cached = pageCache.has(actualFile);
-            if (!cached) {
-                el.innerHTML = tabBar + '<div id="loading"><div class="spinner"></div><div>Loading...</div></div>';
-                scroller.scrollTop = 0;
-            } else {
-                el.innerHTML = tabBar;
-            }
+            el.innerHTML = tabBar;
+            if (!pageCache.has(actualFile)) scroller.scrollTop = 0;
 
             el.querySelectorAll('[data-etab]').forEach(btn => {
                 btn.addEventListener('click', () => {
