@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.20';
+const APP_VERSION = '3.21';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -725,7 +725,7 @@ async function loadPage(file, opts = {}) {
                 <button data-ttab="bing" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${translateTab==='bing'?'var(--link)':'var(--border)'};background:${translateTab==='bing'?'var(--link)':'transparent'};color:${translateTab==='bing'?'#fff':'var(--text-muted)'};font-size:13px;cursor:pointer;font-weight:${translateTab==='bing'?'600':'400'}">Переводчик</button>
             </div>`;
             if (translateTab === 'bing') {
-                el.innerHTML = tabBar + `<iframe src="https://translate.bing.com/?from=ru&to=zh-Hans" style="width:100%;flex:1;border:none;display:block;border-radius:10px;margin-top:8px;margin-bottom:calc(env(safe-area-inset-bottom, 0px) + 16px)" allow="clipboard-read; clipboard-write"></iframe>`;
+                el.innerHTML = tabBar + `<iframe src="https://translate.bing.com/?from=ru&to=zh-Hans" style="width:100%;flex:1;border:none;display:block;border-radius:10px;margin-top:8px;margin-bottom:calc(env(safe-area-inset-bottom, 0px) + 16px)" allow="clipboard-read; clipboard-write; camera; microphone"></iframe>`;
             } else {
                 el.innerHTML = tabBar + `<div id="phrases-content" style="flex:1;overflow-y:auto;padding:0 10px 16px"></div>`;
                 const phrasesEl = el.querySelector('#phrases-content');
