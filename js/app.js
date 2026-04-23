@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.32';
+const APP_VERSION = '3.33';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -487,12 +487,10 @@ toast.addEventListener('click', () => {
 // ── loadPage ─────────────────────────────────────────────────────────────────
 async function loadPage(file, opts = {}) {
     if (!opts.skipSave && currentPage) {
-        const saveKey = currentPage === 'explore' ? 'explore-' + exploreTab : currentPage;
+        const saveKey = currentPage === 'explore' ? 'explore-' + exploreTab
+            : currentPage === 'translate' && translateTab === 'phrases' ? 'translate-phrases'
+            : currentPage;
         tabScrollY.set(saveKey, scroller.scrollTop);
-        if (currentPage === 'translate' && translateTab === 'phrases') {
-            const phrasesEl = document.getElementById('phrases-content');
-            if (phrasesEl) tabScrollY.set('translate-phrases', phrasesEl.scrollTop);
-        }
     }
     currentPage = file;
     nav.querySelectorAll('button').forEach(b => {
@@ -502,11 +500,10 @@ async function loadPage(file, opts = {}) {
 
     const el = document.getElementById('content');
 
-    // Убираем таббар если уходим с explore
-    if (file !== 'explore') {
-        const tb = document.getElementById('explore-tabbar');
-        if (tb) { tb.remove(); scroller.style.paddingTop = ''; }
-    }
+    // Универсальная очистка fixed tab bar и Bing iframe при любом переходе
+    document.getElementById('page-tabbar')?.remove();
+    document.getElementById('bing-iframe')?.remove();
+    scroller.style.paddingTop = '';
 
     // ── explore ──
     if (file === 'explore') {
@@ -525,9 +522,9 @@ async function loadPage(file, opts = {}) {
                 + 'font-size:13px;cursor:pointer;font-weight:' + (active ? '600' : '400');
 
             // Таббар — фиксированный элемент в body над скроллером
-            document.getElementById('explore-tabbar')?.remove();
+            document.getElementById('page-tabbar')?.remove();
             const tabBarEl = document.createElement('div');
-            tabBarEl.id = 'explore-tabbar';
+            tabBarEl.id = 'page-tabbar';
             tabBarEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:50;background:var(--bg);display:flex;gap:8px;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px';
             tabBarEl.innerHTML =
                 '<button data-etab="info" style="' + makeTabStyle(exploreTab === 'info') + '">Инфо</button>'
@@ -727,46 +724,66 @@ async function loadPage(file, opts = {}) {
     }
 
     if (file === 'translate') {
-        el.classList.add('translate-mode');
-        scroller.style.overflow = 'hidden';
-        const renderTranslate = async () => {
-            const tabBar = `<div style="display:flex;gap:8px;padding:10px 10px 8px;flex-shrink:0">
-                <button data-ttab="phrases" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${translateTab==='phrases'?'var(--link)':'var(--border)'};background:${translateTab==='phrases'?'var(--link)':'transparent'};color:${translateTab==='phrases'?'#fff':'var(--text-muted)'};font-size:13px;cursor:pointer;font-weight:${translateTab==='phrases'?'600':'400'}">Разговорник</button>
-                <button data-ttab="bing" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${translateTab==='bing'?'var(--link)':'var(--border)'};background:${translateTab==='bing'?'var(--link)':'transparent'};color:${translateTab==='bing'?'#fff':'var(--text-muted)'};font-size:13px;cursor:pointer;font-weight:${translateTab==='bing'?'600':'400'}">Переводчик</button>
-            </div>`;
-            if (translateTab === 'bing') {
-                // Запрашиваем разрешения у PWA чтобы делегировать iframe
-                navigator.mediaDevices?.getUserMedia({ audio: true, video: true }).catch(() => {});
-                el.innerHTML = tabBar + `<iframe src="https://translate.bing.com/?from=ru&to=zh-Hans" style="width:100%;flex:1;border:none;display:block;border-radius:10px;margin-top:8px;margin-bottom:calc(env(safe-area-inset-bottom, 0px) + 16px)" allow="clipboard-read; clipboard-write; camera; microphone"></iframe>`;
-            } else {
-                el.innerHTML = tabBar + `<div id="phrases-content" style="flex:1;overflow-y:auto;padding:0 10px 16px"></div>`;
-                const phrasesEl = el.querySelector('#phrases-content');
-                renderPhrasebookFromData(phrasesEl);
-                // восстанавливаем скролл фразбука
-                requestAnimationFrame(() => {
-                    phrasesEl.scrollTop = tabScrollY.get('translate-phrases') || 0;
-                });
-            }
-            el.querySelectorAll('[data-ttab]').forEach(btn => {
+        el.classList.remove('translate-mode');
+        el.removeAttribute('style');
+        scroller.style.overflow = '';
+
+        const renderTranslate = () => {
+            document.getElementById('bing-iframe')?.remove();
+            el.removeAttribute('style');
+            scroller.style.overflow = '';
+
+            const makeTabStyle = (active) =>
+                'padding:6px 16px;border-radius:20px;border:1.5px solid ' + (active ? 'var(--link)' : 'var(--border)') + ';'
+                + 'background:' + (active ? 'var(--link)' : 'transparent') + ';'
+                + 'color:' + (active ? '#fff' : 'var(--text-muted)') + ';'
+                + 'font-size:13px;cursor:pointer;font-weight:' + (active ? '600' : '400');
+
+            // Fixed tab bar — тот же паттерн что explore
+            document.getElementById('page-tabbar')?.remove();
+            const tabBarEl = document.createElement('div');
+            tabBarEl.id = 'page-tabbar';
+            tabBarEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:50;background:var(--bg);display:flex;gap:8px;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px';
+            tabBarEl.innerHTML =
+                '<button data-ttab="phrases" style="' + makeTabStyle(translateTab === 'phrases') + '">Разговорник</button>'
+                + '<button data-ttab="bing" style="' + makeTabStyle(translateTab === 'bing') + '">Переводчик</button>';
+            document.body.insertBefore(tabBarEl, scroller);
+
+            tabBarEl.querySelectorAll('[data-ttab]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    // сохраняем скролл фразбука перед переключением
-                    const prev = document.getElementById('phrases-content');
-                    if (prev) tabScrollY.set('translate-phrases', prev.scrollTop);
+                    if (translateTab === 'phrases') tabScrollY.set('translate-phrases', scroller.scrollTop);
                     translateTab = btn.dataset.ttab;
                     renderTranslate();
                 });
             });
+
+            if (translateTab === 'bing') {
+                navigator.mediaDevices?.getUserMedia({ audio: true, video: true }).catch(() => {});
+                el.innerHTML = '';
+                requestAnimationFrame(() => {
+                    const tabH = tabBarEl.offsetHeight;
+                    scroller.style.paddingTop = tabH + 'px';
+                    scroller.style.overflow = 'hidden';
+                    el.style.padding = '0';
+                    el.style.height = 'calc(100dvh - ' + tabH + 'px - var(--nav-h) - env(safe-area-inset-bottom, 0px))';
+                    el.innerHTML = '<iframe id="bing-iframe" src="https://translate.bing.com/?from=ru&to=zh-Hans" style="width:100%;height:100%;border:none;display:block;border-radius:10px" allow="clipboard-read; clipboard-write; camera; microphone"></iframe>';
+                });
+            } else {
+                el.innerHTML = '';
+                renderPhrasebookFromData(el);
+                requestAnimationFrame(() => {
+                    scroller.style.paddingTop = tabBarEl.offsetHeight + 'px';
+                    scroller.scrollTop = tabScrollY.get('translate-phrases') || 0;
+                });
+            }
         };
-        el.style.display = 'flex';
-        el.style.flexDirection = 'column';
-        await renderTranslate();
+
+        renderTranslate();
 
         // Подсветка результата поиска в разговорнике
         if (opts.searchQuery && translateTab === 'phrases') {
             requestAnimationFrame(() => {
-                const phrasesEl = document.getElementById('phrases-content');
-                if (!phrasesEl) return;
-                const blocks = Array.from(phrasesEl.querySelectorAll('h3,p,.phrase-ru,.phrase-card'));
+                const blocks = Array.from(el.querySelectorAll('h3,p,.phrase-ru,.phrase-card'));
                 const qWords = opts.searchQuery.trim().split(/\s+/).filter(Boolean);
                 const qWordRes = qWords.map(w => new RegExp(escapeRe(w), 'i'));
 
@@ -790,9 +807,9 @@ async function loadPage(file, opts = {}) {
                 }
                 if (target) {
                     const elTop = target.getBoundingClientRect().top
-                        - phrasesEl.getBoundingClientRect().top
-                        + phrasesEl.scrollTop;
-                    phrasesEl.scrollTop = Math.max(0, elTop - 80);
+                        - scroller.getBoundingClientRect().top
+                        + scroller.scrollTop;
+                    scroller.scrollTop = Math.max(0, elTop - 80);
                     target.classList.add('search-flash');
                     target.addEventListener('animationend', () => target.classList.remove('search-flash'), { once: true });
                 }
@@ -802,7 +819,7 @@ async function loadPage(file, opts = {}) {
     }
 
     el.classList.remove('translate-mode');
-    el.style.display = '';
+    el.removeAttribute('style');
     scroller.style.overflow = '';
 
     if (file === 'settings') {
@@ -1275,7 +1292,10 @@ scroller.addEventListener('scroll', () => {
     if (!stickyRaf) stickyRaf = requestAnimationFrame(() => { updateStickyHeader(); stickyRaf = null; });
     if (scrollSaveTimer) return;
     scrollSaveTimer = setTimeout(() => {
-        tabScrollY.set(currentPage, scroller.scrollTop);
+        const key = currentPage === 'explore' ? 'explore-' + exploreTab
+            : currentPage === 'translate' && translateTab === 'phrases' ? 'translate-phrases'
+            : currentPage;
+        tabScrollY.set(key, scroller.scrollTop);
         scrollSaveTimer = null;
     }, 150);
 }, { passive: true });
@@ -1332,8 +1352,7 @@ scroller.addEventListener('touchstart', e => {
     if (e.touches.length !== 1 || currentPage === 'settings') { pullStartY = 0; return; }
     if (currentPage === 'translate') {
         if (translateTab !== 'phrases') { pullStartY = 0; return; }
-        const phrasesEl = document.getElementById('phrases-content');
-        if (!phrasesEl || phrasesEl.scrollTop !== 0) { pullStartY = 0; return; }
+        if (scroller.scrollTop !== 0) { pullStartY = 0; return; }
     } else if (scroller.scrollTop !== 0) {
         pullStartY = 0; return;
     }
