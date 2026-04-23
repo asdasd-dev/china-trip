@@ -46,7 +46,9 @@ Plans:
   3. Before the trip starts, the screen shows a countdown ("X дней до поездки") instead of the day summary
   4. A single tap on the today content opens the full Plan tab scrolled to the current day's section
   5. "Today" tab is visible in the bottom nav bar and is the active tab on app launch
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 02-01-PLAN.md — Today home screen with countdown, day summary, and tap-to-plan
 
 ---
 
@@ -60,7 +62,9 @@ Plans:
   2. Tapping any day pill scrolls the plan directly to that day's section without manual scrolling
   3. Today's day pill is visually highlighted so the current day is immediately obvious
   4. A "Сегодня" button scrolls the plan to the current day when the current day's section is off-screen
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 02-01-PLAN.md — Today home screen with countdown, day summary, and tap-to-plan
 
 ---
 
@@ -74,7 +78,9 @@ Plans:
   2. Tab order matches the trip usage scenario: Сегодня → План → Explore → Разговорник → Чеклист
   3. Every page and subtab loads correctly in DevTools offline mode after SW cache update
   4. SW CACHE_FILES array is updated to include all assets added during Phases 1–3
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 02-01-PLAN.md — Today home screen with countdown, day summary, and tap-to-plan
 
 ---
 
@@ -82,8 +88,8 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure & Bugs | 2/2 | Complete   | 2026-04-23 |
-| 2. Today Home Screen | 0/? | Not started | — |
+| 1. Infrastructure & Bugs | 2/2 | Complete    | 2026-04-23 |
+| 2. Today Home Screen | 0/1 | In progress | — |
 | 3. Plan Navigation | 0/? | Not started | — |
 | 4. Nav & Final Polish | 0/? | Not started | — |
 
