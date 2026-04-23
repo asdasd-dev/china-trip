@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.30';
+const APP_VERSION = '3.31';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -502,15 +502,16 @@ async function loadPage(file, opts = {}) {
 
     const el = document.getElementById('content');
 
+    // Убираем таббар если уходим с explore
+    if (file !== 'explore') document.getElementById('explore-tabbar')?.remove();
+
     // ── explore ──
     if (file === 'explore') {
         if (opts.subTab) exploreTab = opts.subTab;
         const actualFile = exploreTab === 'places' ? 'places.md' : 'info.md';
 
         el.classList.remove('translate-mode');
-        el.classList.remove('explore-mode');
         el.style.display = '';
-        el.style.flexDirection = '';
         scroller.style.overflow = '';
 
         const renderExplore = async () => {
@@ -520,15 +521,20 @@ async function loadPage(file, opts = {}) {
                 + 'color:' + (active ? '#fff' : 'var(--text-muted)') + ';'
                 + 'font-size:13px;cursor:pointer;font-weight:' + (active ? '600' : '400');
 
-            const tabBar = '<div style="display:flex;gap:8px;padding:12px 14px 10px;position:sticky;top:0;z-index:10;background:var(--content-bg);margin:-16px -14px 0;border-radius:10px 10px 0 0">'
-                + '<button data-etab="info" style="' + makeTabStyle(exploreTab === 'info') + '">Инфо</button>'
-                + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + '">Места</button>'
-                + '</div>';
+            // Таббар — отдельный элемент в скроллере, перед карточкой
+            document.getElementById('explore-tabbar')?.remove();
+            const tabBarEl = document.createElement('div');
+            tabBarEl.id = 'explore-tabbar';
+            tabBarEl.style.cssText = 'display:flex;gap:8px;padding:10px 14px 8px;position:sticky;top:0;z-index:10;background:var(--bg)';
+            tabBarEl.innerHTML =
+                '<button data-etab="info" style="' + makeTabStyle(exploreTab === 'info') + '">Инфо</button>'
+                + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + '">Места</button>';
+            scroller.insertBefore(tabBarEl, el);
 
-            el.innerHTML = tabBar;
             if (!pageCache.has(actualFile)) scroller.scrollTop = 0;
+            el.innerHTML = '';
 
-            el.querySelectorAll('[data-etab]').forEach(btn => {
+            tabBarEl.querySelectorAll('[data-etab]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     tabScrollY.set('explore-' + exploreTab, scroller.scrollTop);
                     exploreTab = btn.dataset.etab;
@@ -707,7 +713,7 @@ async function loadPage(file, opts = {}) {
                     });
                 }
             } catch(err) {
-                el.innerHTML += '<p style="color:red">Failed to load: ' + err.message + '</p>';
+                el.innerHTML = '<p style="color:red">Failed to load: ' + err.message + '</p>';
             }
         };
 
