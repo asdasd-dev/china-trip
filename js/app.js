@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.27';
+const APP_VERSION = '3.28';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -488,8 +488,7 @@ toast.addEventListener('click', () => {
 async function loadPage(file, opts = {}) {
     if (!opts.skipSave && currentPage) {
         const saveKey = currentPage === 'explore' ? 'explore-' + exploreTab : currentPage;
-        const exploreContentEl = currentPage === 'explore' ? document.getElementById('explore-content') : null;
-        tabScrollY.set(saveKey, exploreContentEl ? exploreContentEl.scrollTop : scroller.scrollTop);
+        tabScrollY.set(saveKey, scroller.scrollTop);
         if (currentPage === 'translate' && translateTab === 'phrases') {
             const phrasesEl = document.getElementById('phrases-content');
             if (phrasesEl) tabScrollY.set('translate-phrases', phrasesEl.scrollTop);
@@ -509,12 +508,11 @@ async function loadPage(file, opts = {}) {
         const actualFile = exploreTab === 'places' ? 'places.md' : 'info.md';
 
         el.classList.remove('translate-mode');
-        el.classList.add('explore-mode');
-        el.style.display = 'flex';
-        el.style.flexDirection = 'column';
-        scroller.style.overflow = 'hidden';
+        el.classList.remove('explore-mode');
+        el.style.display = '';
+        el.style.flexDirection = '';
+        scroller.style.overflow = '';
 
-        // Рендерим tab bar + внутренний скролл (как в переводчике)
         const renderExplore = async () => {
             const makeTabStyle = (active) =>
                 'padding:6px 16px;border-radius:20px;border:1.5px solid ' + (active ? 'var(--link)' : 'var(--border)') + ';'
@@ -522,31 +520,21 @@ async function loadPage(file, opts = {}) {
                 + 'color:' + (active ? '#fff' : 'var(--text-muted)') + ';'
                 + 'font-size:13px;cursor:pointer;font-weight:' + (active ? '600' : '400');
 
-            const tabBar = '<div style="display:flex;gap:8px;padding:10px 10px 8px;flex-shrink:0">'
+            const tabBar = '<div style="display:flex;gap:8px;padding:10px 10px 10px;position:sticky;top:0;z-index:10;background:var(--content-bg)">'
                 + '<button data-etab="info" style="' + makeTabStyle(exploreTab === 'info') + '">Инфо</button>'
                 + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + '">Места</button>'
                 + '</div>';
 
-            el.innerHTML = tabBar + '<div id="explore-content" style="flex:1;overflow-y:auto;padding:0 10px 16px"></div>';
-            const exploreEl = el.querySelector('#explore-content');
-            if (!pageCache.has(actualFile)) exploreEl.scrollTop = 0;
+            el.innerHTML = tabBar;
+            if (!pageCache.has(actualFile)) scroller.scrollTop = 0;
 
             el.querySelectorAll('[data-etab]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    tabScrollY.set('explore-' + exploreTab, document.getElementById('explore-content')?.scrollTop || 0);
+                    tabScrollY.set('explore-' + exploreTab, scroller.scrollTop);
                     exploreTab = btn.dataset.etab;
                     loadPage('explore', { skipSave: true, subTab: exploreTab });
                 });
             });
-
-            let exploreScrollTimer = null;
-            exploreEl.addEventListener('scroll', () => {
-                if (exploreScrollTimer) return;
-                exploreScrollTimer = setTimeout(() => {
-                    tabScrollY.set('explore-' + exploreTab, exploreEl.scrollTop);
-                    exploreScrollTimer = null;
-                }, 150);
-            }, { passive: true });
 
             try {
                 const mdText = pageCache.has(actualFile)
@@ -556,7 +544,7 @@ async function loadPage(file, opts = {}) {
                 marked.setOptions({ breaks: true, gfm: true });
                 const mdDiv = document.createElement('div');
                 mdDiv.innerHTML = marked.parse(mdText);
-                exploreEl.appendChild(mdDiv);
+                el.appendChild(mdDiv);
 
                 transformPhrasebook(mdDiv);
 
@@ -580,9 +568,9 @@ async function loadPage(file, opts = {}) {
                     if (todayH2) {
                         const scrollToToday = () => {
                             const elTop = todayH2.getBoundingClientRect().top
-                                - exploreEl.getBoundingClientRect().top
-                                + exploreEl.scrollTop;
-                            exploreEl.scrollTop = Math.max(0, elTop - 80);
+                                - scroller.getBoundingClientRect().top
+                                + scroller.scrollTop;
+                            scroller.scrollTop = Math.max(0, elTop - 80);
                         };
                         const todayBtn = document.createElement('button');
                         todayBtn.textContent = 'Сегодня';
@@ -667,9 +655,9 @@ async function loadPage(file, opts = {}) {
 
                 // Поиск-хайлайт
                 if (opts.searchQuery) {
-                    exploreEl.scrollTop = 0;
+                    scroller.scrollTop = 0;
                     requestAnimationFrame(() => {
-                        const blocks = Array.from(exploreEl.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote,.phrase-ru'));
+                        const blocks = Array.from(el.querySelectorAll('h1,h2,h3,h4,p,li,td,blockquote,.phrase-ru'));
                         const qWords = opts.searchQuery.trim().split(/\s+/).filter(Boolean);
                         const qWordRes = qWords.map(w => new RegExp(escapeRe(w), 'i'));
 
@@ -703,9 +691,9 @@ async function loadPage(file, opts = {}) {
                         }
                         if (target) {
                             const elTop = target.getBoundingClientRect().top
-                                - exploreEl.getBoundingClientRect().top
-                                + exploreEl.scrollTop;
-                            exploreEl.scrollTop = Math.max(0, elTop - 80);
+                                - scroller.getBoundingClientRect().top
+                                + scroller.scrollTop;
+                            scroller.scrollTop = Math.max(0, elTop - 80);
                             target.classList.add('search-flash');
                             target.addEventListener('animationend', () => target.classList.remove('search-flash'), { once: true });
                         }
@@ -714,7 +702,7 @@ async function loadPage(file, opts = {}) {
                 } else {
                     // восстанавливаем скролл и при навигации, и при переключении сабтаба
                     requestAnimationFrame(() => {
-                        exploreEl.scrollTop = tabScrollY.get('explore-' + exploreTab) || 0;
+                        scroller.scrollTop = tabScrollY.get('explore-' + exploreTab) || 0;
                         updateStickyHeader();
                     });
                 }
@@ -803,9 +791,7 @@ async function loadPage(file, opts = {}) {
     }
 
     el.classList.remove('translate-mode');
-    el.classList.remove('explore-mode');
     el.style.display = '';
-    el.style.flexDirection = '';
     scroller.style.overflow = '';
 
     if (file === 'settings') {
@@ -1337,9 +1323,6 @@ scroller.addEventListener('touchstart', e => {
         if (translateTab !== 'phrases') { pullStartY = 0; return; }
         const phrasesEl = document.getElementById('phrases-content');
         if (!phrasesEl || phrasesEl.scrollTop !== 0) { pullStartY = 0; return; }
-    } else if (currentPage === 'explore') {
-        const ec = document.getElementById('explore-content');
-        if (!ec || ec.scrollTop !== 0) { pullStartY = 0; return; }
     } else if (scroller.scrollTop !== 0) {
         pullStartY = 0; return;
     }
