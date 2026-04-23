@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.17';
+const APP_VERSION = '3.18';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -314,6 +314,10 @@ function transformPhrasebook(el, sectionOnly = false) {
 // Рендер разговорника из PHRASEBOOK в контейнер
 function renderPhrasebookFromData(phrasesEl) {
     phrasesEl.innerHTML = '';
+    const intro = document.createElement('p');
+    intro.style.cssText = 'font-size:0.85em;color:var(--text-muted);margin:0 0 16px;line-height:1.5';
+    intro.innerHTML = '<b>Пиньинь</b> — латинская запись китайского произношения. Тоны: <b>ā</b> ровный, <b>á</b> восходящий, <b>ǎ</b> вниз-вверх, <b>à</b> резко вниз. Тоны важны — одно слово в разных тонах это разные слова. Нажми ▶ чтобы услышать.';
+    phrasesEl.appendChild(intro);
     PHRASEBOOK.forEach(({ category, phrases }) => {
         const h3 = document.createElement('h3');
         h3.textContent = category;
