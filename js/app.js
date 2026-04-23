@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.40';
+const APP_VERSION = '3.41';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -750,11 +750,16 @@ async function loadPage(file, opts = {}) {
             tabBarEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:50;background:var(--bg);display:flex;gap:8px;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px';
             tabBarEl.innerHTML =
                 '<button data-ttab="phrases" style="' + makeTabStyle(translateTab === 'phrases') + '">Разговорник</button>'
-                + '<button data-ttab="bing" style="' + makeTabStyle(translateTab === 'bing') + '">Переводчик</button>';
+                + '<button data-ttab="bing" style="' + makeTabStyle(translateTab === 'bing') + '">Переводчик</button>'
+                + '<button data-ttab="google" style="' + makeTabStyle(false) + '">Google</button>';
             document.body.insertBefore(tabBarEl, scroller);
 
             tabBarEl.querySelectorAll('[data-ttab]').forEach(btn => {
                 btn.addEventListener('click', () => {
+                    if (btn.dataset.ttab === 'google') {
+                        window.location.href = 'googletranslate://';
+                        return;
+                    }
                     if (translateTab === 'phrases') tabScrollY.set('translate-phrases', scroller.scrollTop);
                     translateTab = btn.dataset.ttab;
                     renderTranslate();
