@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.38';
+const APP_VERSION = '3.39';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -646,7 +646,11 @@ async function loadPage(file, opts = {}) {
                         e.preventDefault();
                         const href = a.getAttribute('href');
                         const [targetFile, targetId] = href.split('#');
-                        loadPage(targetFile, { skipSave: true }).then(() => {
+                        const exploreFiles = { 'places.md': 'places', 'info.md': 'info' };
+                        const exploreSubTab = exploreFiles[targetFile];
+                        const navTarget = exploreSubTab ? 'explore' : targetFile;
+                        const opts = exploreSubTab ? { subTab: exploreSubTab, skipSave: true } : { skipSave: true };
+                        loadPage(navTarget, opts).then(() => {
                             setTimeout(() => {
                                 const target = document.getElementById(targetId);
                                 if (target) target.scrollIntoView({ behavior: 'instant' });
