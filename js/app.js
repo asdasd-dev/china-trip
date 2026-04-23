@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.16';
+const APP_VERSION = '3.17';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -318,6 +318,9 @@ function renderPhrasebookFromData(phrasesEl) {
         const h3 = document.createElement('h3');
         h3.textContent = category;
         phrasesEl.appendChild(h3);
+        const grid = document.createElement('div');
+        grid.className = 'phrase-grid';
+        phrasesEl.appendChild(grid);
         phrases.forEach(({ ru, zh, pinyin, note }) => {
             const when = (note && note !== '—') ? note : '';
             const card = document.createElement('div');
@@ -343,7 +346,7 @@ function renderPhrasebookFromData(phrasesEl) {
             card.querySelector('.phrase-show').addEventListener('click', () => {
                 showChineseOverlay(zh, pinyin, ru);
             });
-            phrasesEl.appendChild(card);
+            grid.appendChild(card);
         });
     });
 }
