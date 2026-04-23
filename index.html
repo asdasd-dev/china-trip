@@ -785,7 +785,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '3.14';
+        const APP_VERSION = '3.15';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -986,6 +986,44 @@
                 el.style.display = 'flex';
                 el.style.flexDirection = 'column';
                 await renderTranslate();
+
+                // Подсветка результата поиска в разговорнике
+                if (opts.searchQuery && translateTab === 'phrases') {
+                    requestAnimationFrame(() => {
+                        const phrasesEl = document.getElementById('phrases-content');
+                        if (!phrasesEl) return;
+                        const blocks = Array.from(phrasesEl.querySelectorAll('h3,p,.phrase-ru,.phrase-card'));
+                        const qWords = opts.searchQuery.trim().split(/\s+/).filter(Boolean);
+                        const qWordRes = qWords.map(w => new RegExp(escapeRe(w), 'i'));
+
+                        let target = null;
+                        if (opts.searchSnippet) {
+                            const sWords = (opts.searchSnippet.toLowerCase().match(/[а-яёa-z0-9]+/gi) || []);
+                            let bestScore = 0;
+                            for (const b of blocks) {
+                                const bText = b.textContent.toLowerCase();
+                                let hits = 0;
+                                for (let i = 0; i < sWords.length - 1; i++) {
+                                    if (bText.includes(sWords[i] + ' ' + sWords[i + 1])) hits++;
+                                }
+                                if (hits > bestScore) { bestScore = hits; target = b; }
+                            }
+                        }
+                        if (!target) {
+                            const allMatch = blocks.filter(b => qWordRes.every(re => re.test(b.textContent)));
+                            const anyMatch = blocks.filter(b => qWordRes.some(re => re.test(b.textContent)));
+                            target = (allMatch.length ? allMatch : anyMatch)[0] || null;
+                        }
+                        if (target) {
+                            const elTop = target.getBoundingClientRect().top
+                                - phrasesEl.getBoundingClientRect().top
+                                + phrasesEl.scrollTop;
+                            phrasesEl.scrollTop = Math.max(0, elTop - 80);
+                            target.classList.add('search-flash');
+                            target.addEventListener('animationend', () => target.classList.remove('search-flash'), { once: true });
+                        }
+                    });
+                }
                 return;
             }
             el.classList.remove('translate-mode');
@@ -996,6 +1034,7 @@
                 const v = APP_VERSION;
                 const changelog = [
                     { date: '23.04.2026', items: [
+                        'Поиск: переход из результатов в разговорник скроллит и подсвечивает нужную фразу',
                         'Поиск: фразы из разговорника теперь индексируются и появляются в результатах',
                         'Переводчик: отступы у iframe сверху и снизу',
                         'Разговорник: свайп-поиск работает независимо — активен в разговорнике (с проверкой скролла), отключён в Bing-переводчике',
