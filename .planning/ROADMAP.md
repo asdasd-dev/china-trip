@@ -9,7 +9,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Infrastructure & Bugs** — Fix force-reload bug, extract getScrollKey(), audit SW cache and visual bugs
+- [x] **Phase 1: Infrastructure & Bugs** — Fix force-reload bug, extract getScrollKey(), audit SW cache and visual bugs (completed 2026-04-23)
 - [ ] **Phase 2: Today Home Screen** — New default landing page showing current trip day, date, and today's plan summary
 - [ ] **Phase 3: Plan Navigation** — Day-pill strip and "Go to today" button in the Plan tab
 - [ ] **Phase 4: Nav & Final Polish** — Tab order, labels, SW precache verification, offline pass
@@ -28,7 +28,7 @@
   2. Navigating between all pages and back preserves scroll position correctly for each page
   3. A visual audit pass finds no broken layouts, clipped text, or misaligned elements on any page
   4. SW cache manifest includes all current JS, MD, and asset files — DevTools offline mode shows every page loading
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [ ] 01-PLAN-infrastructure-fixes.md — Extract getScrollKey(), verify version sync, audit SW precache
 - [ ] 01-PLAN-visual-audit.md — Systematic visual audit of all pages/subtabs, fix any bugs found
@@ -82,7 +82,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure & Bugs | 1/2 | In Progress|  |
+| 1. Infrastructure & Bugs | 2/2 | Complete   | 2026-04-23 |
 | 2. Today Home Screen | 0/? | Not started | — |
 | 3. Plan Navigation | 0/? | Not started | — |
 | 4. Nav & Final Polish | 0/? | Not started | — |
