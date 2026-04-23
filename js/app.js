@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.31';
+const APP_VERSION = '3.32';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -503,7 +503,10 @@ async function loadPage(file, opts = {}) {
     const el = document.getElementById('content');
 
     // Убираем таббар если уходим с explore
-    if (file !== 'explore') document.getElementById('explore-tabbar')?.remove();
+    if (file !== 'explore') {
+        const tb = document.getElementById('explore-tabbar');
+        if (tb) { tb.remove(); scroller.style.paddingTop = ''; }
+    }
 
     // ── explore ──
     if (file === 'explore') {
@@ -521,15 +524,17 @@ async function loadPage(file, opts = {}) {
                 + 'color:' + (active ? '#fff' : 'var(--text-muted)') + ';'
                 + 'font-size:13px;cursor:pointer;font-weight:' + (active ? '600' : '400');
 
-            // Таббар — отдельный элемент в скроллере, перед карточкой
+            // Таббар — фиксированный элемент в body над скроллером
             document.getElementById('explore-tabbar')?.remove();
             const tabBarEl = document.createElement('div');
             tabBarEl.id = 'explore-tabbar';
-            tabBarEl.style.cssText = 'display:flex;gap:8px;padding:10px 14px 8px;position:sticky;top:0;z-index:10;background:var(--bg)';
+            tabBarEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:50;background:var(--bg);display:flex;gap:8px;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px';
             tabBarEl.innerHTML =
                 '<button data-etab="info" style="' + makeTabStyle(exploreTab === 'info') + '">Инфо</button>'
                 + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + '">Места</button>';
-            scroller.insertBefore(tabBarEl, el);
+            document.body.insertBefore(tabBarEl, scroller);
+            // Сдвигаем скроллер вниз на высоту таббара
+            requestAnimationFrame(() => { scroller.style.paddingTop = tabBarEl.offsetHeight + 'px'; });
 
             if (!pageCache.has(actualFile)) scroller.scrollTop = 0;
             el.innerHTML = '';
