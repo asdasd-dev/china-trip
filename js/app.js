@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.42';
+const APP_VERSION = '3.43';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -484,12 +484,17 @@ toast.addEventListener('click', () => {
     }
 });
 
+// ── Scroll key helper ─────────────────────────────────────────────────────────
+function getScrollKey() {
+    if (currentPage === 'explore') return 'explore-' + exploreTab;
+    if (currentPage === 'translate' && translateTab === 'phrases') return 'translate-phrases';
+    return currentPage;
+}
+
 // ── loadPage ─────────────────────────────────────────────────────────────────
 async function loadPage(file, opts = {}) {
     if (!opts.skipSave && currentPage) {
-        const saveKey = currentPage === 'explore' ? 'explore-' + exploreTab
-            : currentPage === 'translate' && translateTab === 'phrases' ? 'translate-phrases'
-            : currentPage;
+        const saveKey = getScrollKey();
         tabScrollY.set(saveKey, scroller.scrollTop);
     }
     currentPage = file;
@@ -538,7 +543,7 @@ async function loadPage(file, opts = {}) {
 
             tabBarEl.querySelectorAll('[data-etab]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    tabScrollY.set('explore-' + exploreTab, scroller.scrollTop);
+                    tabScrollY.set(getScrollKey(), scroller.scrollTop);
                     exploreTab = btn.dataset.etab;
                     loadPage('explore', { skipSave: true, subTab: exploreTab });
                 });
@@ -1344,9 +1349,7 @@ scroller.addEventListener('scroll', () => {
     if (!stickyRaf) stickyRaf = requestAnimationFrame(() => { updateStickyHeader(); stickyRaf = null; });
     if (scrollSaveTimer) return;
     scrollSaveTimer = setTimeout(() => {
-        const key = currentPage === 'explore' ? 'explore-' + exploreTab
-            : currentPage === 'translate' && translateTab === 'phrases' ? 'translate-phrases'
-            : currentPage;
+        const key = getScrollKey();
         tabScrollY.set(key, scroller.scrollTop);
         scrollSaveTimer = null;
     }, 150);
