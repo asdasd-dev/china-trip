@@ -12,8 +12,9 @@
     <script>
         // Apply theme + accent before paint to avoid flash
         (function() {
+            var r = document.documentElement;
             var t = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', t);
+            r.setAttribute('data-theme', t);
             var tc = document.querySelector('meta[name="theme-color"]');
             if (tc) tc.setAttribute('content', t === 'dark' ? '#0D1117' : '#FEFBF6');
             var accents = {
@@ -48,7 +49,6 @@
                 r.style.setProperty('--blockquote-border', lp.border);
                 r.style.setProperty('--blockquote-text', lp.bqText);
             }
-            var r = document.documentElement;
             r.style.setProperty('--link', color);
             r.style.setProperty('--toc-link', color);
             r.style.setProperty('--nav-accent', color);
