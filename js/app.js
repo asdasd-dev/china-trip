@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.37';
+const APP_VERSION = '3.38';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -864,23 +864,37 @@ async function loadPage(file, opts = {}) {
             + '<table style="margin-top:12px;width:100%"><tr><th>Версия</th><td>' + v + (updateAvailable && latestVersion ? ' → ' + latestVersion : '') + '</td></tr></table>'
             + '<button id="update-btn" style="margin-top:20px;width:100%;padding:12px;border-radius:8px;border:none;background:var(--link);color:#fff;font-size:15px;font-weight:600;cursor:pointer">' + (updateAvailable ? '🔄 Установить обновление' : 'Обновить приложение') + '</button>'
             + '<button id="clear-cache-btn" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-size:14px;cursor:pointer">Очистить кэш</button>'
-            + '<div style="margin-top:16px;border-radius:8px;background:var(--toc-bg);border:1px solid var(--border);overflow:hidden">'
-            + '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">'
-            + '<div><div style="font-weight:600;font-size:15px;display:flex;align-items:center;gap:6px">Умный поиск<button id="smart-search-info-btn" style="width:18px;height:18px;border-radius:50%;border:1.5px solid var(--text-muted);background:transparent;color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;padding:0;line-height:1;flex-shrink:0">i</button></div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">ML-модель, поиск по смыслу</div></div>'
-            + '<label style="position:relative;display:inline-block;width:44px;height:26px;flex-shrink:0">'
-            + '<input type="checkbox" id="smart-search-toggle" style="opacity:0;width:0;height:0" ' + (localStorage.getItem('smartSearch') === 'on' ? 'checked' : '') + '>'
-            + '<span id="smart-search-thumb" style="position:absolute;inset:0;border-radius:13px;background:' + (localStorage.getItem('smartSearch') === 'on' ? 'var(--link)' : 'var(--toggle-bg)') + ';transition:.2s;cursor:pointer"></span>'
-            + '<span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;transform:' + (localStorage.getItem('smartSearch') === 'on' ? 'translateX(18px)' : 'translateX(0)') + ';pointer-events:none"></span>'
-            + '</label>'
-            + '</div>'
-            + '<div style="border-top:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:8px">'
-            + '<div id="model-status-text" style="font-size:12px;color:var(--text-muted);flex:1">⏳ Проверка модели…</div>'
-            + '</div>'
-            + '<div style="border-top:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
-            + '<div id="semantic-status-text" style="font-size:13px;color:var(--text-muted)">' + getSemanticStatusText() + '</div>'
-            + '<button id="semantic-index-btn" style="padding:6px 14px;border-radius:6px;border:1.5px solid var(--link);background:transparent;color:var(--link);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0" ' + (semanticIndexing ? 'disabled' : '') + '>' + getSemanticBtnText() + '</button>'
-            + '</div>'
-            + '</div>'
+            + (() => {
+                const searchOn = localStorage.getItem('search') === 'on';
+                const smartOn = localStorage.getItem('smartSearch') === 'on';
+                const mkToggle = (id, thumbId, on) =>
+                    '<label style="position:relative;display:inline-block;width:44px;height:26px;flex-shrink:0">'
+                    + '<input type="checkbox" id="' + id + '" style="opacity:0;width:0;height:0"' + (on ? ' checked' : '') + '>'
+                    + '<span id="' + thumbId + '" style="position:absolute;inset:0;border-radius:13px;background:' + (on ? 'var(--link)' : 'var(--toggle-bg)') + ';transition:.2s;cursor:pointer"></span>'
+                    + '<span style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;transform:' + (on ? 'translateX(18px)' : 'translateX(0)') + ';pointer-events:none"></span>'
+                    + '</label>';
+                return '<div style="margin-top:16px;border-radius:8px;background:var(--toc-bg);border:1px solid var(--border);overflow:hidden">'
+                    // Parent: Поиск
+                    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">'
+                    + '<div style="font-weight:600;font-size:15px">Поиск</div>'
+                    + mkToggle('search-toggle', 'search-thumb', searchOn)
+                    + '</div>'
+                    // Child: Умный поиск (indented, grayed when search off)
+                    + '<div id="smart-search-section" style="border-top:1px solid var(--border);transition:opacity .2s;' + (!searchOn ? 'opacity:0.4;pointer-events:none;' : '') + '">'
+                    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 10px 28px">'
+                    + '<div><div style="font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px">Умный поиск<button id="smart-search-info-btn" style="width:18px;height:18px;border-radius:50%;border:1.5px solid var(--text-muted);background:transparent;color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;padding:0;line-height:1;flex-shrink:0">i</button></div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">ML-модель, поиск по смыслу</div></div>'
+                    + mkToggle('smart-search-toggle', 'smart-search-thumb', smartOn)
+                    + '</div>'
+                    + '<div style="border-top:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:8px">'
+                    + '<div id="model-status-text" style="font-size:12px;color:var(--text-muted);flex:1">⏳ Проверка модели…</div>'
+                    + '</div>'
+                    + '<div style="border-top:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px">'
+                    + '<div id="semantic-status-text" style="font-size:13px;color:var(--text-muted)">' + getSemanticStatusText() + '</div>'
+                    + '<button id="semantic-index-btn" style="padding:6px 14px;border-radius:6px;border:1.5px solid var(--link);background:transparent;color:var(--link);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0" ' + (semanticIndexing ? 'disabled' : '') + '>' + getSemanticBtnText() + '</button>'
+                    + '</div>'
+                    + '</div>'
+                    + '</div>';
+            })()
             + '</div>' // закрываем settings-info
 
             + '<div id="settings-console" style="display:none"><div style="padding:8px 0 4px;display:flex;justify-content:flex-end"><button id="copy-log-btn" style="padding:4px 12px;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer">Скопировать</button></div><div id="console-log" style="font-family:monospace;font-size:11px;white-space:pre-wrap;word-break:break-all;padding:4px 0;min-height:200px"></div></div>';
@@ -925,6 +939,21 @@ async function loadPage(file, opts = {}) {
                 + '<li>При обновлении приложения до новой версии индекс сбрасывается — нужно переиндексировать</li>'
                 + '</ol>'
             );
+        });
+
+        el.querySelector('#search-toggle').addEventListener('change', function() {
+            const on = this.checked;
+            localStorage.setItem('search', on ? 'on' : 'off');
+            const thumb = el.querySelector('#search-thumb');
+            const knob = thumb.nextElementSibling;
+            thumb.style.background = on ? 'var(--link)' : 'var(--toggle-bg)';
+            knob.style.transform = on ? 'translateX(18px)' : 'translateX(0)';
+            const section = el.querySelector('#smart-search-section');
+            section.style.opacity = on ? '' : '0.4';
+            section.style.pointerEvents = on ? '' : 'none';
+            if (!on) {
+                document.querySelectorAll('#search-results > div[data-semantic-pending], #search-results > div[data-semantic-section]').forEach(e => e.remove());
+            }
         });
 
         el.querySelector('#smart-search-toggle').addEventListener('change', function() {
@@ -1359,6 +1388,7 @@ searchInput.addEventListener('input', () => {
 let pullStartY = 0;
 let pullTriggered = false;
 scroller.addEventListener('touchstart', e => {
+    if (localStorage.getItem('search') !== 'on') { pullStartY = 0; return; }
     if (e.touches.length !== 1 || currentPage === 'settings') { pullStartY = 0; return; }
     if (currentPage === 'translate') {
         if (translateTab !== 'phrases') { pullStartY = 0; return; }
