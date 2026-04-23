@@ -1,4 +1,4 @@
-const VERSION = '3.15';
+const VERSION = '3.16';
 const CACHE = 'china-trip-' + VERSION;
 const MODEL_CACHE = 'china-trip-models'; // персистентный, не удаляется при обновлениях
 
@@ -11,6 +11,9 @@ const PRECACHE = [
     './info.md',
     './places.md',
     './manifest.json',
+    './js/phrasebook.js',
+    './js/search.js',
+    './js/app.js',
 ];
 
 self.addEventListener('message', e => {
