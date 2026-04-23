@@ -785,7 +785,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '3.9';
+        const APP_VERSION = '3.11';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -821,6 +821,7 @@
         ];
 
         let currentPage = PAGES[0].file;
+        let translateTab = 'phrases'; // активная вкладка внутри translate-страницы
         const scroller = document.getElementById('scroller');
         let updateAvailable = false;
         let latestVersion = null;
@@ -953,7 +954,7 @@
             if (file === 'translate') {
                 el.classList.add('translate-mode');
                 scroller.style.overflow = 'hidden';
-                let translateTab = 'phrases';
+                translateTab = 'phrases';
                 const renderTranslate = async () => {
                     const tabBar = `<div style="display:flex;gap:8px;padding:10px 10px 8px;flex-shrink:0">
                         <button data-ttab="phrases" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${translateTab==='phrases'?'var(--link)':'var(--border)'};background:${translateTab==='phrases'?'var(--link)':'transparent'};color:${translateTab==='phrases'?'#fff':'var(--text-muted)'};font-size:13px;cursor:pointer;font-weight:${translateTab==='phrases'?'600':'400'}">Разговорник</button>
@@ -995,6 +996,7 @@
                 const v = APP_VERSION;
                 const changelog = [
                     { date: '23.04.2026', items: [
+                        'Разговорник: свайп-поиск работает независимо — активен в разговорнике (с проверкой скролла), отключён в Bing-переводчике',
                         'Настройки: "Обновить приложение" теперь проверяет новый SW, "Очистить кэш" удаляет модель и индекс',
                         'Умный поиск: в карточке показывается статус ML-модели — скачана / частично / не скачана',
                         'Обновление: автоматическое применение новой версии при разворачивании приложения (cache: reload исключает старые файлы)',
@@ -2398,12 +2400,17 @@ onmessage = async ({ data }) => {
         let pullStartY = 0;
         let pullTriggered = false;
         scroller.addEventListener('touchstart', e => {
-            if (e.touches.length === 1 && scroller.scrollTop === 0 && currentPage !== 'settings') {
-                pullStartY = e.touches[0].clientY;
-                pullTriggered = false;
-            } else {
-                pullStartY = 0;
+            if (e.touches.length !== 1 || currentPage === 'settings') { pullStartY = 0; return; }
+            // на translate-странице: Bing — свайп отключён, разговорник — проверяем скролл внутреннего контейнера
+            if (currentPage === 'translate') {
+                if (translateTab !== 'phrases') { pullStartY = 0; return; }
+                const phrasesEl = document.getElementById('phrases-content');
+                if (!phrasesEl || phrasesEl.scrollTop !== 0) { pullStartY = 0; return; }
+            } else if (scroller.scrollTop !== 0) {
+                pullStartY = 0; return;
             }
+            pullStartY = e.touches[0].clientY;
+            pullTriggered = false;
         }, { passive: true });
         scroller.addEventListener('touchmove', e => {
             if (!pullStartY || pullTriggered) return;
