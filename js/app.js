@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.33';
+const APP_VERSION = '3.34';
 
 const PAGES = [
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
@@ -758,7 +758,6 @@ async function loadPage(file, opts = {}) {
             });
 
             if (translateTab === 'bing') {
-                navigator.mediaDevices?.getUserMedia({ audio: true, video: true }).catch(() => {});
                 el.innerHTML = '';
                 requestAnimationFrame(() => {
                     const tabH = tabBarEl.offsetHeight;
