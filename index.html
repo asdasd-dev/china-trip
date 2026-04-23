@@ -785,7 +785,7 @@
 
         const BASE = './';
         const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-        const APP_VERSION = '3.13';
+        const APP_VERSION = '3.14';
         const pageCache = new Map();
         const tabScrollY = new Map();
 
@@ -996,6 +996,7 @@
                 const v = APP_VERSION;
                 const changelog = [
                     { date: '23.04.2026', items: [
+                        'Поиск: фразы из разговорника теперь индексируются и появляются в результатах',
                         'Переводчик: отступы у iframe сверху и снизу',
                         'Разговорник: свайп-поиск работает независимо — активен в разговорнике (с проверкой скролла), отключён в Bing-переводчике',
                         'Настройки: "Обновить приложение" теперь проверяет новый SW, "Очистить кэш" удаляет модель и индекс',
@@ -1607,12 +1608,33 @@
             searchTimer = setTimeout(() => performSearch(searchInput.value.trim()), 200);
         });
 
+        // Извлекаем секцию "Разговорник" из markdown info.md
+        function extractPhrasebookMd(infoMd) {
+            const lines = infoMd.split('\n');
+            let inSection = false;
+            const result = [];
+            for (const line of lines) {
+                if (/^##\s+Разговорник/.test(line)) { inSection = true; continue; }
+                if (inSection && /^##\s/.test(line)) break;
+                if (inSection) result.push(line);
+            }
+            return result.join('\n');
+        }
+
         // Pre-load all pages into cache for search
         async function ensureAllPagesCached() {
-            await Promise.all(PAGES.filter(p => p.file !== 'settings').map(p =>
-                pageCache.has(p.file) ? null :
-                fetch(BASE + p.file).then(r => r.text()).then(t => pageCache.set(p.file, t)).catch(() => {})
-            ));
+            await Promise.all(PAGES.filter(p => p.file !== 'settings').map(p => {
+                if (pageCache.has(p.file)) return null;
+                if (p.file === 'translate') {
+                    // фразы берём из info.md
+                    const infoMd = pageCache.get('info.md');
+                    const getInfo = infoMd
+                        ? Promise.resolve(infoMd)
+                        : fetch(BASE + 'info.md').then(r => r.text()).then(t => { pageCache.set('info.md', t); return t; });
+                    return getInfo.then(md => pageCache.set('translate', extractPhrasebookMd(md))).catch(() => {});
+                }
+                return fetch(BASE + p.file).then(r => r.text()).then(t => pageCache.set(p.file, t)).catch(() => {});
+            }));
         }
 
         function cleanMd(text) {
