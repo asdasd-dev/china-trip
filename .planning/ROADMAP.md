@@ -10,7 +10,7 @@
 ## Phases
 
 - [x] **Phase 1: Infrastructure & Bugs** — Fix force-reload bug, extract getScrollKey(), audit SW cache and visual bugs (completed 2026-04-23)
-- [ ] **Phase 2: Today Home Screen** — New default landing page showing current trip day, date, and today's plan summary
+- [x] **Phase 2: Today Home Screen** — New default landing page showing current trip day, date, and today's plan summary (completed 2026-04-24)
 - [ ] **Phase 3: Plan Navigation** — Day-pill strip and "Go to today" button in the Plan tab
 - [ ] **Phase 4: Nav & Final Polish** — Tab order, labels, SW precache verification, offline pass
 
@@ -89,7 +89,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Infrastructure & Bugs | 2/2 | Complete    | 2026-04-23 |
-| 2. Today Home Screen | 0/1 | In progress | — |
+| 2. Today Home Screen | 1/1 | Complete   | 2026-04-24 |
 | 3. Plan Navigation | 0/? | Not started | — |
 | 4. Nav & Final Polish | 0/? | Not started | — |
 

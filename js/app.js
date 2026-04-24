@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.45';
+const APP_VERSION = '3.46';
 
 const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
 const TRIP_DAYS = 15;
@@ -1246,35 +1246,33 @@ async function loadPage(file, opts = {}) {
             });
             el.insertBefore(cityNav, el.firstChild);
 
-            h1s.forEach((h1, cityIdx) => {
-                const nextH1 = h1s[cityIdx + 1];
-                const cityH2s = h2s.filter(h2 => {
-                    const after = h1.compareDocumentPosition(h2) & Node.DOCUMENT_POSITION_FOLLOWING;
-                    const before = !nextH1 || (nextH1.compareDocumentPosition(h2) & Node.DOCUMENT_POSITION_PRECEDING);
-                    return after && before;
+            // Day-nav: one pill per H2 heading
+            const dayNav = document.createElement('div');
+            dayNav.className = 'city-nav scrollable';
+            let todayDayBtn = null;
+            h2s.forEach(h2 => {
+                const match = h2.textContent.match(/^[ШЧП]\d+/);
+                if (!match) return;
+                const btn = document.createElement('button');
+                btn.textContent = match[0];
+                btn.addEventListener('click', () => {
+                    const elTop = h2.getBoundingClientRect().top
+                        - scroller.getBoundingClientRect().top
+                        + scroller.scrollTop;
+                    scroller.scrollTop = Math.max(0, elTop - 80);
                 });
-                if (cityH2s.length === 0) return;
-                const toc = document.createElement('div');
-                toc.className = 'toc-block';
-                toc.innerHTML = '<div class="toc-title">Содержание</div>';
-                cityH2s.forEach(h2 => {
-                    const anchorId = getAnchorId(h2);
-                    const a = document.createElement('a');
-                    a.textContent = h2.textContent;
-                    a.href = anchorId ? '#' + anchorId : '#';
-                    a.addEventListener('click', e => {
-                        e.preventDefault();
-                        h2.scrollIntoView({ behavior: 'instant' });
-                    });
-                    toc.appendChild(a);
-                });
-                let insertAfter = h1.nextElementSibling;
-                while (insertAfter && insertAfter.tagName !== 'H2' && insertAfter.tagName !== 'A' && insertAfter.tagName !== 'H1') {
-                    insertAfter = insertAfter.nextElementSibling;
+                if (todayH2 && h2 === todayH2) {
+                    btn.classList.add('active');
+                    todayDayBtn = btn;
                 }
-                if (insertAfter) insertAfter.parentNode.insertBefore(toc, insertAfter);
-                else h1.after(toc);
+                dayNav.appendChild(btn);
             });
+            cityNav.after(dayNav);
+            if (todayDayBtn) {
+                requestAnimationFrame(() => {
+                    todayDayBtn.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'center' });
+                });
+            }
         } else {
             if (h2s.length > 2) {
                 const toc = document.createElement('div');
