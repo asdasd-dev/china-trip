@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.46';
+const APP_VERSION = '3.47';
 
 const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
 const TRIP_DAYS = 15;
@@ -1246,33 +1246,94 @@ async function loadPage(file, opts = {}) {
             });
             el.insertBefore(cityNav, el.firstChild);
 
-            // Day-nav: one pill per H2 heading
-            const dayNav = document.createElement('div');
-            dayNav.className = 'city-nav scrollable';
-            let todayDayBtn = null;
+            // Кнопка-календарь: открывает модальный выбор дня
+            const calBtn = document.createElement('button');
+            calBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Дни';
+            cityNav.appendChild(calBtn);
+
+            // Карта дата → H2 (только май 2026)
+            const dateToH2 = new Map();
+            const calDateRe = /(\d{1,2})\s+(янв|фев|мар|апр|май|мая|июн|июл|авг|сен|окт|ноя|дек)/i;
             h2s.forEach(h2 => {
-                const match = h2.textContent.match(/^[ШЧП]\d+/);
-                if (!match) return;
-                const btn = document.createElement('button');
-                btn.textContent = match[0];
-                btn.addEventListener('click', () => {
-                    const elTop = h2.getBoundingClientRect().top
-                        - scroller.getBoundingClientRect().top
-                        + scroller.scrollTop;
-                    scroller.scrollTop = Math.max(0, elTop - 80);
-                });
-                if (todayH2 && h2 === todayH2) {
-                    btn.classList.add('active');
-                    todayDayBtn = btn;
-                }
-                dayNav.appendChild(btn);
+                const m = calDateRe.exec(h2.textContent);
+                if (m && RU_MONTHS[m[2].toLowerCase()] === 5) dateToH2.set(parseInt(m[1]), h2);
             });
-            cityNav.after(dayNav);
-            if (todayDayBtn) {
-                requestAnimationFrame(() => {
-                    todayDayBtn.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'center' });
+
+            // Текущий день в мае 2026 (null если другой месяц/год)
+            const _now = new Date();
+            const calToday = (_now.getFullYear() === 2026 && _now.getMonth() === 4) ? _now.getDate() : null;
+
+            calBtn.addEventListener('click', () => {
+                document.getElementById('plan-cal-overlay')?.remove();
+                const overlay = document.createElement('div');
+                overlay.id = 'plan-cal-overlay';
+                overlay.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+
+                const card = document.createElement('div');
+                card.style.cssText = 'background:var(--card-bg);border-radius:18px;padding:20px;width:min(308px,100%);box-shadow:0 8px 40px rgba(0,0,0,.3)';
+
+                // Заголовок
+                card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+                    + '<span style="font-weight:700;font-size:15px">Май 2026</span>'
+                    + '<button id="cal-x" style="background:none;border:none;font-size:20px;line-height:1;cursor:pointer;color:var(--text-muted);padding:0 6px">✕</button>'
+                    + '</div>';
+
+                // Сетка
+                const grid = document.createElement('div');
+                grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:0';
+                ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].forEach(d => {
+                    const h = document.createElement('div');
+                    h.style.cssText = 'text-align:center;font-size:11px;font-weight:600;color:var(--text-muted);padding:2px 0 8px';
+                    h.textContent = d;
+                    grid.appendChild(h);
                 });
-            }
+
+                // 1 мая 2026 = пятница → смещение 4 (пн=0)
+                for (let i = 0; i < 4; i++) grid.appendChild(document.createElement('div'));
+
+                for (let day = 1; day <= 31; day++) {
+                    const isTripDay = day >= 12 && day <= 26;
+                    const isToday = day === calToday;
+                    const cell = document.createElement('div');
+                    cell.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:2px 0';
+                    const btn = document.createElement('button');
+                    btn.textContent = day;
+                    btn.style.cssText = 'width:36px;height:36px;border:none;border-radius:50%;font-size:13px;'
+                        + 'cursor:' + (isTripDay ? 'pointer' : 'default') + ';'
+                        + 'font-weight:' + (isTripDay ? '600' : '400') + ';'
+                        + 'color:' + (isToday ? '#fff' : isTripDay ? 'var(--link)' : 'var(--text-muted)') + ';'
+                        + 'background:' + (isToday ? 'var(--link)' : 'transparent') + ';'
+                        + 'opacity:' + (isTripDay ? '1' : '0.35') + ';';
+                    if (isTripDay) {
+                        btn.addEventListener('click', () => {
+                            overlay.remove();
+                            const h2 = dateToH2.get(day);
+                            if (h2) {
+                                const elTop = h2.getBoundingClientRect().top
+                                    - scroller.getBoundingClientRect().top
+                                    + scroller.scrollTop;
+                                scroller.scrollTop = Math.max(0, elTop - 80);
+                            }
+                        });
+                        if (!isToday) {
+                            const dot = document.createElement('div');
+                            dot.style.cssText = 'width:4px;height:4px;border-radius:50%;background:var(--link);margin-top:1px';
+                            cell.appendChild(btn);
+                            cell.appendChild(dot);
+                            grid.appendChild(cell);
+                            continue;
+                        }
+                    }
+                    cell.appendChild(btn);
+                    grid.appendChild(cell);
+                }
+
+                card.appendChild(grid);
+                overlay.appendChild(card);
+                document.body.appendChild(overlay);
+                overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+                card.querySelector('#cal-x').addEventListener('click', () => overlay.remove());
+            });
         } else {
             if (h2s.length > 2) {
                 const toc = document.createElement('div');
