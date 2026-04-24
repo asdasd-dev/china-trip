@@ -31,7 +31,23 @@ const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
 const APP_VERSION = '3.44';
 
+const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
+const TRIP_DAYS = 15;
+
+function getTripDayInfo() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start = new Date(2026, 4, 12);
+    const afterEnd = new Date(2026, 4, 27); // day after last day
+    const diffStart = Math.round((today - start) / 86400000);
+    const diffEnd = Math.round((afterEnd - today) / 86400000);
+    if (diffStart < 0) return { state: 'before', daysUntil: -diffStart, dayNumber: 0, totalDays: TRIP_DAYS, todayDate: today };
+    if (diffEnd > 0) return { state: 'during', daysUntil: 0, dayNumber: diffStart + 1, totalDays: TRIP_DAYS, todayDate: today };
+    return { state: 'after', daysUntil: 0, dayNumber: 0, totalDays: TRIP_DAYS, todayDate: today };
+}
+
 const PAGES = [
+    { file: 'today',        label: 'Сегодня',   icon: 'sun' },
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
     { file: 'checklist.md', label: 'Чек-листы', icon: 'list-checks' },
     { file: 'budget.md',    label: 'Бюджет',    icon: 'wallet' },
@@ -41,7 +57,7 @@ const PAGES = [
 ];
 
 // Для поиска и индексирования explore раскрывается в два реальных файла
-const SEARCH_PAGES = PAGES.flatMap(p =>
+const SEARCH_PAGES = PAGES.filter(p => p.file !== 'today').flatMap(p =>
     p.file === 'explore'
         ? [
             { file: 'info.md',   label: 'Инфо',  icon: p.icon, navTarget: 'explore', subTab: 'info' },
@@ -206,7 +222,7 @@ function saveCheckbox(key, checked) {
 async function ensureAllPagesCached() {
     await Promise.all(
         SEARCH_PAGES
-            .filter(p => p.file !== 'settings' && p.file !== 'translate')
+            .filter(p => p.file !== 'settings' && p.file !== 'translate' && p.file !== 'today')
             .map(p => pageCache.has(p.file) ? null :
                 fetch(BASE + p.file).then(r => r.text()).then(t => pageCache.set(p.file, t)).catch(() => {}))
     );
@@ -486,6 +502,7 @@ toast.addEventListener('click', () => {
 
 // ── Scroll key helper ─────────────────────────────────────────────────────────
 function getScrollKey() {
+    if (currentPage === 'today') return 'today';
     if (currentPage === 'explore') return 'explore-' + exploreTab;
     if (currentPage === 'translate' && translateTab === 'phrases') return 'translate-phrases';
     return currentPage;
@@ -1284,7 +1301,7 @@ const stickyHeader = document.getElementById('sticky-header');
 let stickyRaf = null;
 
 function updateStickyHeader() {
-    if (currentPage === 'settings') {
+    if (currentPage === 'settings' || currentPage === 'today') {
         stickyHeader.classList.remove('visible');
         return;
     }
