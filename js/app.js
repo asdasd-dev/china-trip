@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.44';
+const APP_VERSION = '3.45';
 
 const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
 const TRIP_DAYS = 15;
@@ -384,6 +384,22 @@ function findTodayH2(h2s) {
     }) || null;
 }
 
+function extractTodaySection(mdText) {
+    const now = new Date();
+    const day = now.getDate();
+    const month = now.getMonth() + 1;
+    const monthRe = /(\d{1,2})\s+(янв|фев|мар|апр|май|мая|июн|июл|авг|сен|окт|ноя|дек)/i;
+    const sections = mdText.split(/^(?=## )/m);
+    for (const section of sections) {
+        const firstLine = section.split('\n')[0];
+        const m = monthRe.exec(firstLine);
+        if (m && parseInt(m[1]) === day && RU_MONTHS[m[2].toLowerCase()] === month) {
+            return section;
+        }
+    }
+    return null;
+}
+
 const todayToastEl = document.getElementById('today-toast');
 let todayToastTimer = null;
 
@@ -506,6 +522,89 @@ function getScrollKey() {
     if (currentPage === 'explore') return 'explore-' + exploreTab;
     if (currentPage === 'translate' && translateTab === 'phrases') return 'translate-phrases';
     return currentPage;
+}
+
+// ── renderToday ───────────────────────────────────────────────────────────────
+async function renderToday(el) {
+    const info = getTripDayInfo();
+
+    if (info.state === 'before') {
+        const dStr = info.daysUntil;
+        const word = dStr === 1 ? 'день' : (dStr >= 2 && dStr <= 4) ? 'дня' : 'дней';
+        el.innerHTML =
+            '<div style="text-align:center;padding:32px 0 16px">' +
+                '<div style="font-size:14px;color:var(--text-muted);margin-bottom:8px">До поездки</div>' +
+                '<div style="font-size:64px;font-weight:700;line-height:1">' + dStr + '</div>' +
+                '<div style="font-size:18px;color:var(--text-muted);margin-top:4px">' + word + '</div>' +
+            '</div>' +
+            '<div style="background:var(--content-bg);border-radius:12px;padding:16px;margin-top:16px">' +
+                '<div style="font-size:14px;color:var(--text-muted)">Начало: 12 мая 2026</div>' +
+                '<div style="font-size:14px;color:var(--text-muted);margin-top:4px">Шанхай → Чжанцзяцзе → Пекин, 15 дней</div>' +
+                '<button id="today-to-plan" style="margin-top:16px;width:100%;padding:12px;border:none;' +
+                    'background:var(--link);color:#fff;border-radius:8px;font-size:15px;cursor:pointer">' +
+                    'Посмотреть маршрут →</button>' +
+            '</div>';
+        el.querySelector('#today-to-plan').addEventListener('click', () => loadPage('plan.md'));
+        requestAnimationFrame(() => { scroller.scrollTop = tabScrollY.get('today') || 0; updateStickyHeader(); });
+        return;
+    }
+
+    if (info.state === 'after') {
+        el.innerHTML =
+            '<div style="text-align:center;padding:48px 0">' +
+                '<div style="font-size:48px;margin-bottom:16px">🎉</div>' +
+                '<div style="font-size:22px;font-weight:600;margin-bottom:8px">Поездка завершена</div>' +
+                '<div style="font-size:14px;color:var(--text-muted)">12–26 мая 2026 · 15 дней</div>' +
+                '<button id="today-to-plan" style="margin-top:24px;padding:12px 32px;border:none;' +
+                    'background:var(--link);color:#fff;border-radius:8px;font-size:15px;cursor:pointer">' +
+                    'Посмотреть маршрут →</button>' +
+            '</div>';
+        el.querySelector('#today-to-plan').addEventListener('click', () => loadPage('plan.md'));
+        requestAnimationFrame(() => { scroller.scrollTop = tabScrollY.get('today') || 0; updateStickyHeader(); });
+        return;
+    }
+
+    // state === 'during'
+    if (!pageCache.has('plan.md')) {
+        el.innerHTML = '<div id="loading"><div class="spinner"></div><div>Loading...</div></div>';
+        await fetch(BASE + 'plan.md').then(r => r.text()).then(t => pageCache.set('plan.md', t)).catch(() => {});
+    }
+    const mdText = pageCache.get('plan.md') || '';
+    const section = extractTodaySection(mdText);
+
+    const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+    const weekdays = ['вс','пн','вт','ср','чт','пт','сб'];
+    const d = info.todayDate;
+    const dateStr = d.getDate() + ' ' + months[d.getMonth()] + ', ' + weekdays[d.getDay()];
+
+    let sectionHtml = '';
+    if (section) {
+        const heading = section.split('\n')[0];
+        const title = heading.replace(/^#+\s*/, '').replace(/^[А-ЯЁа-яё\d]+:\s*/, '').trim();
+        const bodyMd = section.split('\n').slice(1).join('\n').trim();
+        marked.setOptions({ breaks: true, gfm: true });
+        sectionHtml =
+            '<div style="font-size:14px;color:var(--text-muted);margin-bottom:8px">' + title + '</div>' +
+            '<div class="today-plan-content" style="font-size:14px;line-height:1.5">' + marked.parse(bodyMd) + '</div>';
+    } else {
+        sectionHtml = '<div style="color:var(--text-muted);font-size:14px">Нет данных для этого дня</div>';
+    }
+
+    el.innerHTML =
+        '<div style="text-align:center;padding:24px 0 12px">' +
+            '<div style="font-size:14px;color:var(--text-muted);margin-bottom:4px">' + dateStr + '</div>' +
+            '<div style="font-size:28px;font-weight:700">День ' + info.dayNumber + ' из ' + info.totalDays + '</div>' +
+        '</div>' +
+        '<div id="today-section-card" style="background:var(--content-bg);border-radius:12px;padding:16px;margin-top:8px;cursor:pointer">' +
+            sectionHtml +
+        '</div>' +
+        '<button id="today-to-plan" style="margin-top:16px;width:100%;padding:12px;border:none;' +
+            'background:var(--link);color:#fff;border-radius:8px;font-size:15px;cursor:pointer">' +
+            'Открыть полный план →</button>';
+
+    el.querySelector('#today-section-card').addEventListener('click', () => loadPage('plan.md', { scrollToToday: true }));
+    el.querySelector('#today-to-plan').addEventListener('click', () => loadPage('plan.md', { scrollToToday: true }));
+    requestAnimationFrame(() => { scroller.scrollTop = tabScrollY.get('today') || 0; updateStickyHeader(); });
 }
 
 // ── loadPage ─────────────────────────────────────────────────────────────────
@@ -852,6 +951,13 @@ async function loadPage(file, opts = {}) {
     el.removeAttribute('style');
     scroller.style.overflow = '';
 
+    if (file === 'today') {
+        el.classList.remove('translate-mode');
+        el.style.display = '';
+        await renderToday(el);
+        return;
+    }
+
     if (file === 'settings') {
         const v = APP_VERSION;
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
@@ -1129,6 +1235,7 @@ async function loadPage(file, opts = {}) {
                 todayBtn.addEventListener('click', scrollToToday);
                 cityNav.appendChild(todayBtn);
                 showTodayToast(todayH2, scrollToToday);
+                if (opts.scrollToToday) scrollToToday();
             }
 
             cityNavH1s.forEach(h1 => {
