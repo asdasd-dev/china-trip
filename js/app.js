@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.47';
+const APP_VERSION = '3.48';
 
 const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
 const TRIP_DAYS = 15;
@@ -1246,10 +1246,14 @@ async function loadPage(file, opts = {}) {
             });
             el.insertBefore(cityNav, el.firstChild);
 
-            // Кнопка-календарь: открывает модальный выбор дня
+            // Кнопка-календарь: отдельная строка под city-nav
+            const calRow = document.createElement('div');
+            calRow.className = 'city-nav';
+            calRow.style.cssText = 'margin-top:6px';
             const calBtn = document.createElement('button');
-            calBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Дни';
-            cityNav.appendChild(calBtn);
+            calBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Выбрать день';
+            calRow.appendChild(calBtn);
+            cityNav.after(calRow);
 
             // Карта дата → H2 (только май 2026)
             const dateToH2 = new Map();
@@ -1270,7 +1274,7 @@ async function loadPage(file, opts = {}) {
                 overlay.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
 
                 const card = document.createElement('div');
-                card.style.cssText = 'background:var(--card-bg);border-radius:18px;padding:20px;width:min(308px,100%);box-shadow:0 8px 40px rgba(0,0,0,.3)';
+                card.style.cssText = 'background:var(--bg);border-radius:18px;padding:20px;width:min(308px,100%);box-shadow:0 8px 40px rgba(0,0,0,.4);border:1px solid rgba(128,128,128,.15)';
 
                 // Заголовок
                 card.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
