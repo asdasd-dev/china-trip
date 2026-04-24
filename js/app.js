@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.48';
+const APP_VERSION = '3.49';
 
 const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
 const TRIP_DAYS = 15;
@@ -47,7 +47,7 @@ function getTripDayInfo() {
 }
 
 const PAGES = [
-    { file: 'today',        label: 'Сегодня',   icon: 'sun' },
+    { file: 'today',        label: 'Сегодня',   icon: 'calendar-days' },
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
     { file: 'checklist.md', label: 'Чек-листы', icon: 'list-checks' },
     { file: 'budget.md',    label: 'Бюджет',    icon: 'wallet' },
