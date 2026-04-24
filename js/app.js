@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.49';
+const APP_VERSION = '3.50';
 
 const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
 const TRIP_DAYS = 15;
@@ -49,11 +49,9 @@ function getTripDayInfo() {
 const PAGES = [
     { file: 'today',        label: 'Сегодня',   icon: 'calendar-days' },
     { file: 'plan.md',      label: 'Маршрут',   icon: 'map' },
-    { file: 'checklist.md', label: 'Чек-листы', icon: 'list-checks' },
-    { file: 'budget.md',    label: 'Бюджет',    icon: 'wallet' },
     { file: 'explore',      label: 'Инфо',      icon: 'info' },
     { file: 'translate',    label: 'Перевод',   icon: 'languages' },
-    { file: 'settings',     label: 'Настройки', icon: 'settings' },
+    { file: 'checklist.md', label: 'Чек-листы', icon: 'list-checks' },
 ];
 
 // Для поиска и индексирования explore раскрывается в два реальных файла
@@ -62,6 +60,7 @@ const SEARCH_PAGES = PAGES.filter(p => p.file !== 'today').flatMap(p =>
         ? [
             { file: 'info.md',   label: 'Инфо',  icon: p.icon, navTarget: 'explore', subTab: 'info' },
             { file: 'places.md', label: 'Места', icon: p.icon, navTarget: 'explore', subTab: 'places' },
+            { file: 'budget.md', label: 'Бюджет', icon: p.icon, navTarget: 'explore', subTab: 'budget' },
           ]
         : [{ ...p, navTarget: p.file, subTab: null }]
 );
@@ -93,7 +92,7 @@ const tabScrollY = new Map();
 
 let currentPage = PAGES[0].file;
 let translateTab = 'phrases'; // активная вкладка внутри translate-страницы
-let exploreTab = 'info';      // активная вкладка внутри explore-страницы ('info' | 'places')
+let exploreTab = 'info';      // активная вкладка внутри explore-страницы ('info' | 'places' | 'budget')
 const scroller = document.getElementById('scroller');
 let updateAvailable = false;
 let latestVersion = null;
@@ -524,6 +523,10 @@ function getScrollKey() {
     return currentPage;
 }
 
+const SETTINGS_BTN_HTML = '<button id="today-settings-link" style="display:block;margin:28px auto 0;background:none;border:none;color:var(--text-muted);cursor:pointer;padding:6px 12px;font-size:12px;opacity:0.55;letter-spacing:.3px">'
+    + '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
+    + 'Настройки</button>';
+
 // ── renderToday ───────────────────────────────────────────────────────────────
 async function renderToday(el) {
     const info = getTripDayInfo();
@@ -543,8 +546,9 @@ async function renderToday(el) {
                 '<button id="today-to-plan" style="margin-top:16px;width:100%;padding:12px;border:none;' +
                     'background:var(--link);color:#fff;border-radius:8px;font-size:15px;cursor:pointer">' +
                     'Посмотреть маршрут →</button>' +
-            '</div>';
+            '</div>' + SETTINGS_BTN_HTML;
         el.querySelector('#today-to-plan').addEventListener('click', () => loadPage('plan.md'));
+        el.querySelector('#today-settings-link').addEventListener('click', () => loadPage('settings'));
         requestAnimationFrame(() => { scroller.scrollTop = tabScrollY.get('today') || 0; updateStickyHeader(); });
         return;
     }
@@ -558,8 +562,9 @@ async function renderToday(el) {
                 '<button id="today-to-plan" style="margin-top:24px;padding:12px 32px;border:none;' +
                     'background:var(--link);color:#fff;border-radius:8px;font-size:15px;cursor:pointer">' +
                     'Посмотреть маршрут →</button>' +
-            '</div>';
+            '</div>' + SETTINGS_BTN_HTML;
         el.querySelector('#today-to-plan').addEventListener('click', () => loadPage('plan.md'));
+        el.querySelector('#today-settings-link').addEventListener('click', () => loadPage('settings'));
         requestAnimationFrame(() => { scroller.scrollTop = tabScrollY.get('today') || 0; updateStickyHeader(); });
         return;
     }
@@ -600,10 +605,11 @@ async function renderToday(el) {
         '</div>' +
         '<button id="today-to-plan" style="margin-top:16px;width:100%;padding:12px;border:none;' +
             'background:var(--link);color:#fff;border-radius:8px;font-size:15px;cursor:pointer">' +
-            'Открыть полный план →</button>';
+            'Открыть полный план →</button>' + SETTINGS_BTN_HTML;
 
     el.querySelector('#today-section-card').addEventListener('click', () => loadPage('plan.md', { scrollToToday: true }));
     el.querySelector('#today-to-plan').addEventListener('click', () => loadPage('plan.md', { scrollToToday: true }));
+    el.querySelector('#today-settings-link').addEventListener('click', () => loadPage('settings'));
     requestAnimationFrame(() => { scroller.scrollTop = tabScrollY.get('today') || 0; updateStickyHeader(); });
 }
 
@@ -629,7 +635,7 @@ async function loadPage(file, opts = {}) {
     // ── explore ──
     if (file === 'explore') {
         if (opts.subTab) exploreTab = opts.subTab;
-        const actualFile = exploreTab === 'places' ? 'places.md' : 'info.md';
+        const actualFile = exploreTab === 'places' ? 'places.md' : exploreTab === 'budget' ? 'budget.md' : 'info.md';
 
         el.classList.remove('translate-mode');
         el.style.display = '';
@@ -649,7 +655,8 @@ async function loadPage(file, opts = {}) {
             tabBarEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:50;background:var(--bg);display:flex;gap:8px;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px';
             tabBarEl.innerHTML =
                 '<button data-etab="info" style="' + makeTabStyle(exploreTab === 'info') + '">Инфо</button>'
-                + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + '">Места</button>';
+                + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + '">Места</button>'
+                + '<button data-etab="budget" style="' + makeTabStyle(exploreTab === 'budget') + '">Бюджет</button>';
             document.body.insertBefore(tabBarEl, scroller);
             // Сдвигаем скроллер вниз на высоту таббара
             requestAnimationFrame(() => { scroller.style.paddingTop = tabBarEl.offsetHeight + 'px'; });
@@ -767,7 +774,7 @@ async function loadPage(file, opts = {}) {
                         e.preventDefault();
                         const href = a.getAttribute('href');
                         const [targetFile, targetId] = href.split('#');
-                        const exploreFiles = { 'places.md': 'places', 'info.md': 'info' };
+                        const exploreFiles = { 'places.md': 'places', 'info.md': 'info', 'budget.md': 'budget' };
                         const exploreSubTab = exploreFiles[targetFile];
                         const navTarget = exploreSubTab ? 'explore' : targetFile;
                         const opts = exploreSubTab ? { subTab: exploreSubTab, skipSave: true } : { skipSave: true };
@@ -1359,7 +1366,7 @@ async function loadPage(file, opts = {}) {
                 e.preventDefault();
                 const href = a.getAttribute('href');
                 const [targetFile, targetId] = href.split('#');
-                const exploreFiles = { 'places.md': 'places', 'info.md': 'info' };
+                const exploreFiles = { 'places.md': 'places', 'info.md': 'info', 'budget.md': 'budget' };
                 const exploreSubTab = exploreFiles[targetFile];
                 const navTarget = exploreSubTab ? 'explore' : targetFile;
                 const opts = exploreSubTab ? { subTab: exploreSubTab, skipSave: true } : { skipSave: true };
