@@ -1,4 +1,4 @@
-const VERSION = '3.50';
+const VERSION = '3.51';
 const CACHE = 'china-trip-' + VERSION;
 const MODEL_CACHE = 'china-trip-models'; // персистентный, не удаляется при обновлениях
 
@@ -12,6 +12,7 @@ const PRECACHE = [
     './places.md',
     './manifest.json',
     './js/phrasebook.js',
+    './js/amap.js',
     './js/search.js',
     './js/app.js',
     './icon.png',

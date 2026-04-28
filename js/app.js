@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.50';
+const APP_VERSION = '3.51';
 
 const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
 const TRIP_DAYS = 15;
@@ -92,7 +92,7 @@ const tabScrollY = new Map();
 
 let currentPage = PAGES[0].file;
 let translateTab = 'phrases'; // активная вкладка внутри translate-страницы
-let exploreTab = 'info';      // активная вкладка внутри explore-страницы ('info' | 'places' | 'budget')
+let exploreTab = 'info';      // активная вкладка внутри explore-страницы ('info' | 'places' | 'budget' | 'amap')
 const scroller = document.getElementById('scroller');
 let updateAvailable = false;
 let latestVersion = null;
@@ -365,6 +365,65 @@ function renderPhrasebookFromData(phrasesEl) {
                 showChineseOverlay(zh, pinyin, ru);
             });
             grid.appendChild(card);
+        });
+    });
+}
+
+// ── Адреса для Amap ──────────────────────────────────────────────────────────
+function copyTextToClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+        return navigator.clipboard.writeText(text);
+    }
+    // Fallback для старых WebView
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    ta.remove();
+    return Promise.resolve();
+}
+
+function renderAmapAddresses(rootEl) {
+    rootEl.innerHTML = '';
+    const intro = document.createElement('p');
+    intro.style.cssText = 'color:var(--text-muted);font-size:0.9em;margin:0 0 16px';
+    intro.textContent = 'Тап по карточке копирует иероглифы в буфер. Вставь в Amap Global для добавления в избранное.';
+    rootEl.appendChild(intro);
+
+    AMAP_PLACES.forEach(({ city, sections }) => {
+        const cityH = document.createElement('h2');
+        cityH.textContent = city;
+        rootEl.appendChild(cityH);
+
+        sections.forEach(({ title, items }) => {
+            const sectionH = document.createElement('h3');
+            sectionH.textContent = title;
+            rootEl.appendChild(sectionH);
+
+            const grid = document.createElement('div');
+            grid.className = 'addr-grid';
+            rootEl.appendChild(grid);
+
+            items.forEach(({ zh, label }) => {
+                const card = document.createElement('button');
+                card.className = 'addr-card';
+                card.type = 'button';
+                card.innerHTML =
+                    '<div class="addr-zh"></div>'
+                    + '<div class="addr-label"></div>';
+                card.querySelector('.addr-zh').textContent = zh;
+                card.querySelector('.addr-label').textContent = label;
+                card.addEventListener('click', () => {
+                    copyTextToClipboard(zh).then(() => {
+                        showToast('📋 Скопировано: ' + zh, null, 1800);
+                        card.classList.add('copied');
+                        setTimeout(() => card.classList.remove('copied'), 600);
+                    });
+                });
+                grid.appendChild(card);
+            });
         });
     });
 }
@@ -652,16 +711,17 @@ async function loadPage(file, opts = {}) {
             document.getElementById('page-tabbar')?.remove();
             const tabBarEl = document.createElement('div');
             tabBarEl.id = 'page-tabbar';
-            tabBarEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:50;background:var(--bg);display:flex;gap:8px;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px';
+            tabBarEl.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:50;background:var(--bg);display:flex;gap:8px;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px;overflow-x:auto;scrollbar-width:none';
             tabBarEl.innerHTML =
-                '<button data-etab="info" style="' + makeTabStyle(exploreTab === 'info') + '">Инфо</button>'
-                + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + '">Места</button>'
-                + '<button data-etab="budget" style="' + makeTabStyle(exploreTab === 'budget') + '">Бюджет</button>';
+                '<button data-etab="info" style="' + makeTabStyle(exploreTab === 'info') + ';flex-shrink:0">Инфо</button>'
+                + '<button data-etab="places" style="' + makeTabStyle(exploreTab === 'places') + ';flex-shrink:0">Места</button>'
+                + '<button data-etab="amap" style="' + makeTabStyle(exploreTab === 'amap') + ';flex-shrink:0">Адреса</button>'
+                + '<button data-etab="budget" style="' + makeTabStyle(exploreTab === 'budget') + ';flex-shrink:0">Бюджет</button>';
             document.body.insertBefore(tabBarEl, scroller);
             // Сдвигаем скроллер вниз на высоту таббара
             requestAnimationFrame(() => { scroller.style.paddingTop = tabBarEl.offsetHeight + 'px'; });
 
-            if (!pageCache.has(actualFile)) scroller.scrollTop = 0;
+            if (exploreTab !== 'amap' && !pageCache.has(actualFile)) scroller.scrollTop = 0;
             el.innerHTML = '';
 
             tabBarEl.querySelectorAll('[data-etab]').forEach(btn => {
@@ -671,6 +731,16 @@ async function loadPage(file, opts = {}) {
                     loadPage('explore', { skipSave: true, subTab: exploreTab });
                 });
             });
+
+            // Адреса — отдельный JS-рендер, не markdown
+            if (exploreTab === 'amap') {
+                renderAmapAddresses(el);
+                requestAnimationFrame(() => {
+                    scroller.scrollTop = tabScrollY.get('explore-amap') || 0;
+                    updateStickyHeader();
+                });
+                return;
+            }
 
             try {
                 const mdText = pageCache.has(actualFile)
