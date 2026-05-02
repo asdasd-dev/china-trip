@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.53';
+const APP_VERSION = '3.54';
 
 const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
 const TRIP_DAYS = 15;
