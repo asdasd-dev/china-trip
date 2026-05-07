@@ -29,7 +29,7 @@ function renderConsoleLog() {
 // ── Константы ───────────────────────────────────────────────────────────────
 const BASE = './';
 const DB_URL = 'https://cn-trip-default-rtdb.asia-southeast1.firebasedatabase.app';
-const APP_VERSION = '3.56';
+const APP_VERSION = '3.57';
 
 const TRIP_START = new Date(2026, 4, 12); // May 12, 2026 — local time, never ISO string
 const TRIP_DAYS = 15;
@@ -215,6 +215,15 @@ function saveCheckbox(key, checked) {
         method: 'PUT',
         body: JSON.stringify(checked)
     });
+}
+
+// Стабильный хэш текста задачи — ключ Firebase не зависит от позиции в файле
+function hashTaskText(text) {
+    let h = 5381;
+    for (let i = 0; i < text.length; i++) {
+        h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+    }
+    return h.toString(36);
 }
 
 // ── Pre-load all pages into cache for search ─────────────────────────────────
@@ -1269,10 +1278,11 @@ async function loadPage(file, opts = {}) {
 
         let idx = 0;
         html = html.replace(/<li><input\s[^>]*type="checkbox"[^>]*>\s*/gi, (match) => {
-            const key = file.replace('.md', '') + '_' + idx;
-            const i = idx++;
-            const checked = state[key] !== undefined ? state[key] : /checked/i.test(match);
-            return '<li class="task-list-item' + (checked ? ' checked' : '') + '"><input type="checkbox" data-key="' + key + '"' + (checked ? ' checked' : '') + '> <span class="task-text">';
+            const oldKey = file.replace('.md', '') + '_' + idx;
+            idx++;
+            const isCheckedInMd = /checked/i.test(match);
+            // Финальное состояние и data-key ставим в DOM-walk ниже (по хэшу текста)
+            return '<li class="task-list-item"><input type="checkbox" data-old-key="' + oldKey + '" data-md-checked="' + isCheckedInMd + '"> <span class="task-text">';
         });
 
         el.innerHTML = html;
@@ -1462,6 +1472,26 @@ async function loadPage(file, opts = {}) {
             if (span) {
                 while (span.nextSibling) span.appendChild(span.nextSibling);
             }
+            const checkbox = li.querySelector('input[type="checkbox"]');
+            if (!checkbox || !span) return;
+
+            const taskText = span.textContent.trim().replace(/\s+/g, ' ');
+            const newKey = file.replace('.md', '') + '_' + hashTaskText(taskText);
+            const oldKey = checkbox.dataset.oldKey;
+            const mdChecked = checkbox.dataset.mdChecked === 'true';
+
+            // Миграция: новый ключ пуст, старый индексный имеет значение — переносим
+            if (state[newKey] === undefined && oldKey && state[oldKey] !== undefined) {
+                state[newKey] = state[oldKey];
+                saveCheckbox(newKey, state[oldKey]);
+            }
+
+            const checked = state[newKey] !== undefined ? state[newKey] : mdChecked;
+            checkbox.dataset.key = newKey;
+            delete checkbox.dataset.oldKey;
+            delete checkbox.dataset.mdChecked;
+            checkbox.checked = checked;
+            li.classList.toggle('checked', checked);
         });
 
         el.addEventListener('change', e => {
