@@ -55,32 +55,43 @@
 
 <a id="sh2"></a>
 
-## Ш2: 13 мая (ср) — музей + Flair
+## Ш2: 13 мая (ср) — French Concession + PSA + Flair
 
-**Цель:** джетлаг = ранний подъём. Музей днём, Flair вечером.
+**Цель:** джетлаг = ранний подъём. Прогулка по концессии утром, современное искусство днём, Flair вечером.
+**Шанхайский музей закрыт до июля — заменён на FC + Power Station of Art.**
 
 | Время | Что | Как добраться |
 |-------|-----|--------------|
 | 06:30 | (опц.) [Рассвет на Бунде](places.md#bund) + [POPMART](places.md#popmart) | Metro Lujiazui → East Nanjing Rd (1 остановка). Бунд → пешком на Nanjing Rd → POPMART мороженое |
 | 09:00 | Завтрак в отеле | Включён |
-| 10:30 | → Музей | **Metro Line 2: Lujiazui → People's Square** (3 остановки, 10 мин, ¥4) |
-| 11:00–13:30 | [Шанхайский музей](places.md#shanghai-museum) | — |
-| 13:30 | → Xintiandi | **Metro Line 1: People's Square → South Huangpi Road** (2 остановки, 5 мин). Или пешком 15 мин |
-| 13:45–15:00 | Обед Crystal Jade | — |
-| 15:00–16:00 | [Прогулка Xintiandi](places.md#xintiandi) | Пешком |
-| 16:00–17:00 | [**Haus Nowhere**](places.md#haus-nowhere) | Такси ¥20, 10 мин. Вбить: 愚园路1292号 |
-| 17:30 | → Отель | **Metro Line 10: Jiaotong Univ → Lujiazui**, с пересадкой на Nanjing East Rd (Line 2). ~25 мин |
-| 17:30–19:00 | Отдых | Обязательно поспать 1–1.5 ч |
+| 10:30 | → French Concession | **Metro Line 2: Lujiazui → East Nanjing Rd → Line 10 → Shanghai Library** (~25 мин, ¥4) |
+| 11:00–12:30 | [**French Concession** прогулка](places.md#wukang): Wukang Mansion → Wukang Rd → Anfu Rd → Fuxing Park | Пешком |
+| 12:30 | → Haus Nowhere | **Metro Line 10: Shanghai Library → Jiaotong Univ** (1 ост) + 15 мин пешком. Или такси ¥20 |
+| 12:45–14:00 | [**Haus Nowhere**](places.md#haus-nowhere) | — |
+| 14:00 | → Xintiandi | **Metro Line 10: Jiaotong Univ → Xintiandi** (прямая, 5 ост, 15 мин, ¥4) |
+| 14:15–15:15 | Обед Crystal Jade | — |
+| 15:15–16:00 | [Прогулка Xintiandi](places.md#xintiandi) | Пешком |
+| 16:00 | → PSA | **Такси ¥30, 15 мин**. Вбить: 上海当代艺术博物馆 |
+| 16:15–18:30 | [**Power Station of Art**](places.md#psa) | — |
+| 18:45 | → Отель | Такси ¥40, 20 мин |
+| 19:00–19:30 | Отдых | Душ, переодеться |
 | 19:30–20:30 | Простой ужин | У отеля, пешком |
 | 21:00–22:30 | [Flair Rooftop Bar](places.md#flair) | 10 мин пешком от отеля |
 | 22:45 | В отеле, чилл | — |
 | 23:30 | Сон | → подъём ~08:00 (8.5ч) |
 
-### Шанхайский музей 上海博物馆
-**Адрес:** 上海市黄浦区人民大道201号 (201 Renmin Ave, Huangpu)
-**Метро:** People's Square 人民广场 (Line 1/2/8), выход 1
-**Вход:** бесплатный, онлайн-регистрация по паспорту (Trip.com)
-**Аудиогид:** ¥40/чел — **брать обязательно**, без него "красивые штуки", с ним история на 3000 лет
+### French Concession
+**Стартовая точка:** Wukang Mansion (武康大楼) — 上海市徐汇区淮海中路1850号
+**Метро:** Shanghai Library 上海图书馆 (Line 10), выход 1, пешком 5 мин
+**Маршрут:** Wukang Mansion → вниз по Wukang Rd → Anfu Rd (кофейни, бутики) → Fuxing Park
+**Что делать:** не чеклист, а прогулка. Платановые тоннели, особняки 1920-х, независимые кофейни в бывших консульствах.
+
+### Power Station of Art 上海当代艺术博物馆
+**Адрес:** 上海市黄浦区花园港路200号 (200 Huayuangang Rd, Huangpu)
+**Ближайшее метро:** Xizang South Rd 西藏南路 (Line 8) или Shibo Avenue 世博大道 (Line 13), ~1 км пешком — **от Xintiandi на такси быстрее**
+**Вход:** постоянная экспозиция бесплатно; временные выставки ¥30–60/чел
+**Часы:** Вт–Вс 11:00–19:00 (последний вход 18:00), пн выходной
+**Что это:** крупнейший музей современного искусства в Китае, в здании бывшей ТЭЦ 2010 Expo. 41 000 м², главная биеннале Шанхая. 2 часа на основные залы + временную выставку.
 
 ### Обед
 **Crystal Jade 翡翠餐厅**
